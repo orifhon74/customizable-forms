@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 
 function App() {
-    const [message, setMessage] = useState('');
+    const [message] = useState('');
+
+    const apiUrl = process.env.REACT_APP_API_URL;
 
     useEffect(() => {
-        fetch('/api/hello') // No need for the full URL when using proxy
+        fetch(`${apiUrl}/api/hello`)
             .then((response) => response.json())
-            .then((data) => setMessage(data.message))
+            .then((data) => console.log(data))
             .catch((error) => console.error('Error fetching API:', error));
     }, []);
 
