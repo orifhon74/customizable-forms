@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 function App() {
     const [message, setMessage] = useState('');
 
-    const apiUrl = process.env.REACT_APP_API_URL;
+    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001'; // Fallback for local dev
 
     useEffect(() => {
         fetch(`${apiUrl}/api/hello`)
