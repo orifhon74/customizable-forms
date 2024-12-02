@@ -5,13 +5,21 @@ const bcrypt = require('bcryptjs');
 
 // Create a new user
 router.post('/', async (req, res) => {
-    const { username, email, password } = req.body;
+    console.log('Request body:', req.body);
     try {
+        const { username, email, password } = req.body;
+
+        if (!username || !email || !password) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await User.create({ username, email, password: hashedPassword });
-        res.status(201).json(user);
+
+        return res.status(201).json(user);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to create user', details: error.message });
+        console.error('Error creating user:', error); // Log the full error
+        return res.status(500).json({ error: 'Failed to create user', details: error.message });
     }
 });
 
