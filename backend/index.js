@@ -4,10 +4,6 @@ const userRoutes = require('./routes/userRoutes'); // Adjust path if needed
 const app = express();
 
 // Apply CORS globally
-// app.use(cors({
-//     origin: 'https://customizable-forms-xi.vercel.app',
-//     methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow only these HTTP methods
-// }));
 
 const allowedOrigins = [
     'http://localhost:3000',

@@ -11,6 +11,8 @@ const User = sequelize.define('User', {
     paranoid: true, // Enable soft deletes
 });
 
-sequelize.sync(); // Creates the table if it doesn't exist
+sequelize.sync({ force: true }) // WARNING: This will drop and recreate all tables
+    .then(() => console.log('Database synced'))
+    .catch((error) => console.error('Error syncing database:', error));
 
 module.exports = User;
