@@ -11,7 +11,7 @@ const app = express();
 
 const allowedOrigins = [
     'http://localhost:3000',
-    'https://customizable-forms.vercel.app', // Add production frontend URL if needed
+    'https://customizable-forms-xi.vercel.app', // Add production frontend URL if needed
 ];
 
 app.use(cors({
