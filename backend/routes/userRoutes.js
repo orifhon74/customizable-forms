@@ -4,16 +4,15 @@ const User = require('../models/User'); // Sequelize User model
 const bcrypt = require('bcryptjs');
 
 // Create a new user
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
     const { username, email, password } = req.body;
-
-    if (!username || !email || !password) {
-        return res.status(400).json({ error: 'Missing required fields' });
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const user = await User.create({ username, email, password: hashedPassword });
+        res.status(201).json(user);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to create user', details: error.message });
     }
-
-    // Simulate adding a user to the database
-    const newUser = { id: Date.now(), username, email };
-    return res.status(201).json(newUser);
 });
 
 // Get all users
