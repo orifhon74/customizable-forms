@@ -4,8 +4,6 @@ function App() {
     const [users, setUsers] = useState([]);
     const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001'; // Fallback for local dev
 
-    // const apiUrl = 'http://localhost:5001'; // Hardcoded for local testing
-    console.log(`Fetching users from: ${apiUrl}/api/users`);
     useEffect(() => {
         fetch(`${apiUrl}/api/users`) // Replace with a valid endpoint
             .then((response) => {
