@@ -29,17 +29,3 @@ function App() {
 }
 
 export default App;
-
-// import { useState } from 'react';
-//
-// function App() {
-//     const [message, setMessage] = useState('Welcome to the App!');
-//
-//     return (
-//         <div>
-//             <h1>{message}</h1>
-//         </div>
-//     );
-// }
-//
-// export default App;

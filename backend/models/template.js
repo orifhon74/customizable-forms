@@ -1,40 +1,35 @@
 const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../db'); // Adjust to your Sequelize instance
 
-class User extends Model {}
+class Template extends Model {}
 
-User.init({
+Template.init({
     id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
         primaryKey: true,
     },
-    username: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true,
-    },
-    email: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true,
-        validate: {
-            isEmail: true,
-        },
-    },
-    password: {
+    title: {
         type: DataTypes.STRING,
         allowNull: false,
     },
-    role: {
-        type: DataTypes.STRING,
-        defaultValue: 'user', // Default role is 'user'
+    description: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+    },
+    tags: {
+        type: DataTypes.JSON, // Use JSON for storing tags
+        allowNull: true,
+    },
+    createdBy: {
+        type: DataTypes.INTEGER,
+        allowNull: false, // Foreign key to the User model
     },
 }, {
     sequelize, // Pass the Sequelize instance
-    modelName: 'User', // Name of the model
+    modelName: 'Template', // Name of the model
     timestamps: true, // Add createdAt and updatedAt
     paranoid: true, // Enable soft deletes
 });
 
-module.exports = User;
+module.exports = Template;
