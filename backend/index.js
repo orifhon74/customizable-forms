@@ -4,6 +4,7 @@ const { sequelize } = require('./models'); // Import Sequelize instance and mode
 const userRoutes = require('./routes/userRoutes'); // Adjust path if needed
 const templateRoutes = require('./routes/templateRoutes'); // Adjust path if needed
 const router = require('./routes/router')
+const formRoutes = require('./routes/formRoutes'); // Add form routes
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/auth', require('./routes/authRoutes')); // Add auth routes
 app.use('/api/generate-token', router)
+app.use('/api/forms', formRoutes); // Link the form routes
 
 // Sync the database and start the server
 const PORT = process.env.PORT || 5001;

@@ -1,26 +1,16 @@
-const { DataTypes, Model } = require('sequelize');
-const sequelize = require('../db'); // Adjust to your Sequelize instance
+const { DataTypes } = require('sequelize');
+const sequelize = require('../db');
 
-class User extends Model {}
-
-User.init({
-    id: {
-        type: DataTypes.INTEGER,
-        autoIncrement: true,
-        primaryKey: true,
-    },
+const User = sequelize.define('User', {
     username: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
+        unique: 'username_unique_constraint', // Use a named constraint to avoid duplicate indexes
     },
     email: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
-        validate: {
-            isEmail: true,
-        },
+        unique: 'email_unique_constraint', // Use a named constraint to avoid duplicate indexes
     },
     password: {
         type: DataTypes.STRING,
@@ -28,12 +18,10 @@ User.init({
     },
     role: {
         type: DataTypes.STRING,
-        defaultValue: 'user', // Default role is 'user'
+        defaultValue: 'user',
     },
 }, {
-    sequelize, // Pass the Sequelize instance
-    modelName: 'User', // Name of the model
-    timestamps: true, // Add createdAt and updatedAt
+    timestamps: true,
     paranoid: true, // Enable soft deletes
 });
 
