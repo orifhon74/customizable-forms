@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Template = require('../models/template'); // Sequelize Template model
+const Template = require('../models/Template'); // Sequelize Template model
 const authenticate = require('../middleware/authenticate'); // JWT authentication middleware
 
 // Create a new template
