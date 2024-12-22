@@ -1,73 +1,63 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-function FillForm({ template }) {
-    const [formData, setFormData] = useState({
-        string1_answer: '',
-        int1_answer: null,
-        checkbox1_answer: false,
-    });
+function Forms() {
+    const [forms, setForms] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData({
-            ...formData,
-            [name]: type === 'checkbox' ? checked : value,
-        });
-    };
+    useEffect(() => {
+        const fetchForms = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    throw new Error('No token found. Please log in.');
+                }
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        fetch('http://localhost:5001/api/forms', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${localStorage.getItem('token')}`, // Replace with your token retrieval logic
-            },
-            body: JSON.stringify({ ...formData, template_id: template.id }),
-        })
-            .then((res) => res.json())
-            .then((data) => console.log('Form submitted:', data))
-            .catch((err) => console.error('Error submitting form:', err));
-    };
+                const response = await fetch('http://localhost:5001/api/forms', {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Fetched forms:', data); // Debug log
+                setForms(data);
+            } catch (err) {
+                console.error('Error fetching forms:', err.message);
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchForms();
+    }, []);
+
+    if (loading) return <h2>Loading...</h2>;
+    if (error) return <h2>Error: {error}</h2>;
 
     return (
-        <form onSubmit={handleSubmit}>
-            {template.custom_string1_state && (
-                <div>
-                    <label>{template.custom_string1_question}</label>
-                    <input
-                        type="text"
-                        name="string1_answer"
-                        value={formData.string1_answer}
-                        onChange={handleChange}
-                    />
-                </div>
+        <div>
+            <h1>Forms</h1>
+            {forms.length === 0 ? (
+                <p>No forms available.</p>
+            ) : (
+                <ul>
+                    {forms.map((form) => (
+                        <li key={form.id}>
+                            <strong>Template:</strong> {form.Template.title} -{' '}
+                            <strong>User:</strong> {form.User.username} -{' '}
+                            <strong>Answer:</strong> {form.string1_answer}
+                        </li>
+                    ))}
+                </ul>
             )}
-            {template.custom_int1_state && (
-                <div>
-                    <label>{template.custom_int1_question}</label>
-                    <input
-                        type="number"
-                        name="int1_answer"
-                        value={formData.int1_answer || ''}
-                        onChange={handleChange}
-                    />
-                </div>
-            )}
-            {template.custom_checkbox1_state && (
-                <div>
-                    <label>{template.custom_checkbox1_question}</label>
-                    <input
-                        type="checkbox"
-                        name="checkbox1_answer"
-                        checked={formData.checkbox1_answer}
-                        onChange={handleChange}
-                    />
-                </div>
-            )}
-            <button type="submit">Submit</button>
-        </form>
+        </div>
     );
 }
 
-export default FillForm;
+export default Forms;

@@ -1,30 +1,96 @@
-import { useEffect, useState } from 'react';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import AdminDashboard from './components/AdminDashboard';
+import UserDashboard from './components/UserDashboard';
+import Templates from './components/Templates';
+import Forms from './components/Forms';
+import Login from './components/Login';
+import Register from './components/Register';
 
 function App() {
-    const [users, setUsers] = useState([]);
-    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001'; // Fallback for local dev
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [userRole, setUserRole] = useState(null);
 
     useEffect(() => {
-        fetch(`${apiUrl}/api/users`) // Replace with a valid endpoint
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then((data) => setUsers(data))
-            .catch((error) => console.error('Error fetching API:', error));
+        // Check if token exists and validate it
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user')); // Assuming user info is stored
+
+        if (token && user) {
+            setIsAuthenticated(true);
+            setUserRole(user.role);
+        }
     }, []);
 
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setIsAuthenticated(false);
+        setUserRole(null);
+    };
+
     return (
-        <div>
-            <h1>Users:</h1>
-            <ul>
-                {users.map((user) => (
-                    <li key={user.id}>{user.username}</li>
-                ))}
-            </ul>
-        </div>
+        <Router>
+            <div>
+                <nav className="navbar navbar-expand-lg navbar-light bg-light">
+                    <a className="navbar-brand" href="/">Customizable Forms</a>
+                    <div className="collapse navbar-collapse">
+                        <ul className="navbar-nav mr-auto">
+                            {!isAuthenticated ? (
+                                <>
+                                    <li className="nav-item"><Link className="nav-link" to="/login">Login</Link></li>
+                                    <li className="nav-item"><Link className="nav-link" to="/register">Register</Link></li>
+                                </>
+                            ) : (
+                                <>
+                                    {userRole === 'admin' && (
+                                        <li className="nav-item"><Link className="nav-link" to="/admin">Admin Panel</Link></li>
+                                    )}
+                                    <li className="nav-item"><Link className="nav-link" to="/templates">Templates</Link></li>
+                                    <li className="nav-item"><Link className="nav-link" to="/forms">Forms</Link></li>
+                                    <li className="nav-item">
+                                        <button className="btn btn-link nav-link" onClick={handleLogout}>Logout</button>
+                                    </li>
+                                </>
+                            )}
+                        </ul>
+                    </div>
+                </nav>
+
+                <Routes>
+                    <Route path="/" element={<Navigate to="/login" />} />
+                    <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} setUserRole={setUserRole} />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route
+                        path="/admin"
+                        element={userRole === 'admin' ? <AdminDashboard /> : <Navigate to="/" />}
+                    />
+                    <Route
+                        path="/templates"
+                        element={isAuthenticated ? <Templates /> : <Navigate to="/login" />}
+                    />
+                    <Route
+                        path="/forms"
+                        element={isAuthenticated ? <Forms /> : <Navigate to="/login" />}
+                    />
+                    <Route
+                        path="/dashboard"
+                        element={
+                            isAuthenticated ? (
+                                userRole === 'admin' ? (
+                                    <Navigate to="/admin" />
+                                ) : (
+                                    <UserDashboard />
+                                )
+                            ) : (
+                                <Navigate to="/login" />
+                            )
+                        }
+                    />
+                </Routes>
+            </div>
+        </Router>
     );
 }
 
