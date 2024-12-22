@@ -1,43 +1,62 @@
 const express = require('express');
 const router = express.Router();
-const authorizeAdmin = require('../middleware/authorizeAdmin');
 const User = require('../models/User');
+const authorizeAdmin = require('../middleware/authorizeAdmin');
 
-// Admin: Get all users
+// Get all users (Admins only)
 router.get('/users', authorizeAdmin, async (req, res) => {
     try {
         const users = await User.findAll();
         res.json(users);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch users', details: error.message });
+    } catch (err) {
+        console.error('Error fetching users:', err);
+        res.status(500).json({ error: 'Failed to fetch users' });
     }
 });
 
-// Admin: Block a user
-router.put('/block/:id', authorizeAdmin, async (req, res) => {
+// Block or unblock a user (Admins only)
+router.patch('/users/:id/block', authorizeAdmin, async (req, res) => {
     try {
-        const user = await User.findByPk(req.params.id);
-        if (!user) return res.status(404).json({ error: 'User not found' });
+        const { id } = req.params;
+        const user = await User.findByPk(id);
 
-        user.role = 'blocked';
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        user.isBlocked = !user.isBlocked; // Toggle block/unblock
         await user.save();
-        res.json({ message: 'User blocked successfully', user });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to block user', details: error.message });
+
+        res.json({ message: `User ${user.isBlocked ? 'blocked' : 'unblocked'} successfully`, user });
+    } catch (err) {
+        console.error('Error blocking/unblocking user:', err);
+        res.status(500).json({ error: 'Failed to update user' });
     }
 });
 
-// Admin: Make a user admin
-router.put('/make-admin/:id', authorizeAdmin, async (req, res) => {
+// Promote or demote an admin (Admins only)
+router.patch('/users/:id/role', authorizeAdmin, async (req, res) => {
     try {
-        const user = await User.findByPk(req.params.id);
-        if (!user) return res.status(404).json({ error: 'User not found' });
+        const { id } = req.params;
+        const { role } = req.body;
 
-        user.role = 'admin';
+        const user = await User.findByPk(id);
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (role !== 'admin' && role !== 'user') {
+            return res.status(400).json({ error: 'Invalid role' });
+        }
+
+        user.role = role;
         await user.save();
-        res.json({ message: 'User is now an admin', user });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update user role', details: error.message });
+
+        res.json({ message: `User role updated to ${role}`, user });
+    } catch (err) {
+        console.error('Error updating user role:', err);
+        res.status(500).json({ error: 'Failed to update user role' });
     }
 });
 

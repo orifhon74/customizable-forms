@@ -23,7 +23,7 @@ function Templates() {
                 }
 
                 const data = await response.json();
-                console.log('Fetched templates:', data); // Debug fetched templates
+                console.log('Fetched templates:', data);
                 setTemplates(data);
             } catch (err) {
                 console.error('Error fetching templates:', err.message);

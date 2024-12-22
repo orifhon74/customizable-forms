@@ -9,25 +9,17 @@ function Forms() {
         const fetchForms = async () => {
             try {
                 const token = localStorage.getItem('token');
-                if (!token) {
-                    throw new Error('No token found. Please log in.');
-                }
+                if (!token) throw new Error('No token found. Please log in.');
 
                 const response = await fetch('http://localhost:5001/api/forms', {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: { Authorization: `Bearer ${token}` },
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
                 const data = await response.json();
-                console.log('Fetched forms:', data); // Debug log
                 setForms(data);
             } catch (err) {
-                console.error('Error fetching forms:', err.message);
                 setError(err.message);
             } finally {
                 setLoading(false);
@@ -49,9 +41,15 @@ function Forms() {
                 <ul>
                     {forms.map((form) => (
                         <li key={form.id}>
-                            <strong>Template:</strong> {form.Template.title} -{' '}
-                            <strong>User:</strong> {form.User.username} -{' '}
-                            <strong>Answer:</strong> {form.string1_answer}
+                            <p>
+                                <strong>Template:</strong> {form.Template?.title || 'N/A'}
+                            </p>
+                            <p>
+                                <strong>Submitted By:</strong> {form.User?.username || 'N/A'}
+                            </p>
+                            <p>
+                                <strong>Answer:</strong> {form.string1_answer || 'N/A'}
+                            </p>
                         </li>
                     ))}
                 </ul>

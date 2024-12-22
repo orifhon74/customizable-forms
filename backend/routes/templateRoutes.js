@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const Template = require('../models/Template'); // Sequelize Template model
-const authenticate = require('../middleware/authenticate'); // JWT authentication middleware
+const Template = require('../models/Template');
 const Form = require('../models/Form');
-const sequelize = require('sequelize');
+const authenticate = require('../middleware/authenticate'); // JWT authentication middleware
+const authorizeAdmin = require('../middleware/authorizeAdmin'); // Admin middleware
+const sequelize = require('../db');
 
 // Create a new template
 router.post('/', authenticate, async (req, res) => {
@@ -13,50 +14,57 @@ router.post('/', authenticate, async (req, res) => {
             description,
             image_url,
             topic_id,
+            access_type,
+            allowed_users,
             custom_string1_state,
             custom_string1_question,
             custom_int1_state,
             custom_int1_question,
             custom_checkbox1_state,
             custom_checkbox1_question,
-            access_type,
-            allowed_users,
         } = req.body;
 
         const template = await Template.create({
             title,
             description,
             image_url,
-            user_id: req.user.id, // ID from the authenticated user
+            user_id: req.user.id,
             topic_id,
+            access_type,
+            allowed_users: allowed_users || null, // Ensure it's either a valid array or null
             custom_string1_state,
             custom_string1_question,
             custom_int1_state,
             custom_int1_question,
             custom_checkbox1_state,
             custom_checkbox1_question,
-            access_type, // "public" or "private"
-            allowed_users, // Array of user IDs (for private templates)
         });
 
         res.status(201).json(template);
     } catch (err) {
-        console.error('Error creating template:', err);
+        console.error('Error creating template:', err.message);
         res.status(500).json({ error: 'Failed to create template' });
     }
 });
 
-// Get all templates (public or owned by user)
+// Get all templates (Admin sees all, users see public or their own)
 router.get('/', authenticate, async (req, res) => {
     try {
-        const templates = await Template.findAll({
-            where: {
-                [sequelize.Op.or]: [
-                    { user_id: req.user.id }, // Templates created by the user
-                    { access_type: 'public' }, // Public templates
-                ],
-            },
-        });
+        let templates;
+
+        if (req.user.role === 'admin') {
+            templates = await Template.findAll();
+        } else {
+            templates = await Template.findAll({
+                where: {
+                    [sequelize.Op.or]: [
+                        { access_type: 'public' },
+                        { user_id: req.user.id },
+                    ],
+                },
+            });
+        }
+
         res.json(templates);
     } catch (err) {
         console.error('Error fetching templates:', err);
@@ -64,20 +72,20 @@ router.get('/', authenticate, async (req, res) => {
     }
 });
 
-// Get a specific template by ID
-router.get('/:templateId', authenticate, async (req, res) => {
+// Get a single template
+router.get('/:id', authenticate, async (req, res) => {
     try {
-        const template = await Template.findByPk(req.params.templateId);
+        const template = await Template.findByPk(req.params.id);
 
         if (!template) {
             return res.status(404).json({ error: 'Template not found' });
         }
 
-        // Check access permissions
+        // Only allow access if public, user owns it, or admin
         if (
-            template.access_type === 'private' &&
+            template.access_type !== 'public' &&
             template.user_id !== req.user.id &&
-            (!template.allowed_users || !template.allowed_users.includes(req.user.id))
+            req.user.role !== 'admin'
         ) {
             return res.status(403).json({ error: 'Access denied' });
         }
@@ -101,8 +109,7 @@ router.put('/:id', authenticate, async (req, res) => {
             return res.status(404).json({ error: 'Template not found' });
         }
 
-        // Check ownership
-        if (template.user_id !== req.user.id) {
+        if (template.user_id !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({ error: 'Unauthorized to update this template' });
         }
 
@@ -125,8 +132,7 @@ router.delete('/:id', authenticate, async (req, res) => {
             return res.status(404).json({ error: 'Template not found' });
         }
 
-        // Check ownership
-        if (template.user_id !== req.user.id) {
+        if (template.user_id !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({ error: 'Unauthorized to delete this template' });
         }
 
@@ -135,27 +141,6 @@ router.delete('/:id', authenticate, async (req, res) => {
     } catch (err) {
         console.error('Error deleting template:', err);
         res.status(500).json({ error: 'Failed to delete template' });
-    }
-});
-
-// Get stats for a specific template
-router.get('/:templateId/stats', authenticate, async (req, res) => {
-    try {
-        const { templateId } = req.params;
-
-        const stats = await Form.findAll({
-            where: { template_id: templateId },
-            attributes: [
-                [sequelize.fn('AVG', sequelize.col('int1_answer')), 'avg_int1'],
-                [sequelize.fn('COUNT', sequelize.col('checkbox1_answer')), 'checkbox1_count'],
-                [sequelize.fn('SUM', sequelize.col('checkbox1_answer')), 'checkbox1_true_count'],
-            ],
-        });
-
-        res.json(stats);
-    } catch (err) {
-        console.error('Error calculating stats:', err);
-        res.status(500).json({ error: 'Failed to calculate stats' });
     }
 });
 

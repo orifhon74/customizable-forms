@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
 import AdminDashboard from './components/AdminDashboard';
 import UserDashboard from './components/UserDashboard';
 import Templates from './components/Templates';
 import Forms from './components/Forms';
 import Login from './components/Login';
 import Register from './components/Register';
+import TemplateForm from './components/TemplateForm';
+import FormSubmission from './components/FormSubmission';
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -49,6 +50,8 @@ function App() {
                                     )}
                                     <li className="nav-item"><Link className="nav-link" to="/templates">Templates</Link></li>
                                     <li className="nav-item"><Link className="nav-link" to="/forms">Forms</Link></li>
+                                    <li className="nav-item"><Link className="nav-link" to="/create-template">Create Template</Link></li>
+                                    <li className="nav-item"><Link className="nav-link" to="/submit-form/1">Submit Form</Link></li> {/* Replace 1 with dynamic template ID */}
                                     <li className="nav-item">
                                         <button className="btn btn-link nav-link" onClick={handleLogout}>Logout</button>
                                     </li>
@@ -73,6 +76,14 @@ function App() {
                     <Route
                         path="/forms"
                         element={isAuthenticated ? <Forms /> : <Navigate to="/login" />}
+                    />
+                    <Route
+                        path="/create-template"
+                        element={isAuthenticated ? <TemplateForm /> : <Navigate to="/login" />}
+                    />
+                    <Route
+                        path="/submit-form/:id"
+                        element={isAuthenticated ? <FormSubmission /> : <Navigate to="/login" />}
                     />
                     <Route
                         path="/dashboard"
