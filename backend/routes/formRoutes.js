@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Form = require('../models/Form');
-const authenticate = require('../middleware/authenticate'); // JWT authentication middleware
+const authenticate = require('../middleware/authenticate'); // JWT middleware
 const Template = require('../models/Template');
 const User = require('../models/User');
 
@@ -33,6 +33,25 @@ router.get('/', authenticate, async (req, res) => {
     }
 });
 
+// Create a new form (this endpoint allows users to submit answers)
+router.post('/', authenticate, async (req, res) => {
+    try {
+        const { template_id, ...answers } = req.body;
+
+        // Create a new form
+        const form = await Form.create({
+            template_id,
+            user_id: req.user.id, // Use the authenticated user's ID
+            ...answers, // Spread all answers dynamically
+        });
+
+        res.status(201).json(form);
+    } catch (err) {
+        console.error('Error creating form:', err);
+        res.status(500).json({ error: 'Failed to create form' });
+    }
+});
+
 // Get a single form by ID
 router.get('/:formId', authenticate, async (req, res) => {
     try {
@@ -42,11 +61,11 @@ router.get('/:formId', authenticate, async (req, res) => {
             include: [
                 {
                     model: Template,
-                    attributes: ['title', 'description'],
+                    attributes: ['title', 'description'], // Include template details
                 },
                 {
                     model: User,
-                    attributes: ['username', 'email'],
+                    attributes: ['username', 'email'], // Include user details
                 },
             ],
         });
@@ -59,24 +78,6 @@ router.get('/:formId', authenticate, async (req, res) => {
     } catch (err) {
         console.error('Error fetching form:', err);
         res.status(500).json({ error: 'Failed to fetch form' });
-    }
-});
-
-// Create a new form
-router.post('/', authenticate, async (req, res) => {
-    try {
-        const { template_id, ...answers } = req.body;
-
-        const form = await Form.create({
-            template_id,
-            user_id: req.user.id, // Use the authenticated user's ID
-            ...answers, // Dynamically add answers
-        });
-
-        res.status(201).json(form);
-    } catch (err) {
-        console.error('Error creating form:', err);
-        res.status(500).json({ error: 'Failed to create form' });
     }
 });
 

@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../db'); // Your database connection
+const sequelize = require('../db');
 
 const Template = sequelize.define('Template', {
     title: { type: DataTypes.STRING, allowNull: false },
@@ -7,16 +7,8 @@ const Template = sequelize.define('Template', {
     image_url: { type: DataTypes.STRING, allowNull: true },
     user_id: { type: DataTypes.INTEGER, allowNull: false },
     topic_id: { type: DataTypes.INTEGER, allowNull: false },
-    access_type: {
-        type: DataTypes.STRING, // 'public' or 'private'
-        defaultValue: 'public',
-    },
-    allowed_users: {
-        type: DataTypes.JSON, // Array of user IDs
-        allowNull: true,
-    },
-
-    // String Questions
+    access_type: { type: DataTypes.STRING, defaultValue: 'public' },
+    allowed_users: { type: DataTypes.JSON, allowNull: true },
     custom_string1_state: { type: DataTypes.BOOLEAN, defaultValue: false },
     custom_string1_question: { type: DataTypes.STRING, allowNull: true },
     custom_string2_state: { type: DataTypes.BOOLEAN, defaultValue: false },
@@ -25,8 +17,6 @@ const Template = sequelize.define('Template', {
     custom_string3_question: { type: DataTypes.STRING, allowNull: true },
     custom_string4_state: { type: DataTypes.BOOLEAN, defaultValue: false },
     custom_string4_question: { type: DataTypes.STRING, allowNull: true },
-
-    // Integer Questions
     custom_int1_state: { type: DataTypes.BOOLEAN, defaultValue: false },
     custom_int1_question: { type: DataTypes.STRING, allowNull: true },
     custom_int2_state: { type: DataTypes.BOOLEAN, defaultValue: false },
@@ -35,8 +25,6 @@ const Template = sequelize.define('Template', {
     custom_int3_question: { type: DataTypes.STRING, allowNull: true },
     custom_int4_state: { type: DataTypes.BOOLEAN, defaultValue: false },
     custom_int4_question: { type: DataTypes.STRING, allowNull: true },
-
-    // Checkbox Questions
     custom_checkbox1_state: { type: DataTypes.BOOLEAN, defaultValue: false },
     custom_checkbox1_question: { type: DataTypes.STRING, allowNull: true },
     custom_checkbox2_state: { type: DataTypes.BOOLEAN, defaultValue: false },

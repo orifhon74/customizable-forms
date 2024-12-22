@@ -1,16 +1,18 @@
-const Sequelize = require('sequelize');
-const sequelize = require('../db'); // Adjust path to your Sequelize instance
+const sequelize = require('../db'); // Your Sequelize instance
 const User = require('./User');
 const Template = require('./Template');
+const Form = require('./Form');
 
-// Define associations
-User.hasMany(Template, { foreignKey: 'createdBy' }); // A user can have many templates
-Template.belongsTo(User, { foreignKey: 'createdBy' }); // A template belongs to a user
+// Define Associations
+Template.hasMany(Form, { foreignKey: 'template_id', onDelete: 'CASCADE' });
+Form.belongsTo(Template, { foreignKey: 'template_id' });
 
-// Export models and Sequelize instance
+User.hasMany(Form, { foreignKey: 'user_id', onDelete: 'CASCADE' });
+Form.belongsTo(User, { foreignKey: 'user_id' });
+
 module.exports = {
     sequelize,
-    Sequelize,
     User,
     Template,
+    Form,
 };

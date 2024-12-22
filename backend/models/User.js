@@ -5,12 +5,12 @@ const User = sequelize.define('User', {
     username: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: 'username_unique_constraint', // Use a named constraint to avoid duplicate indexes
+        unique: 'username_unique_constraint',
     },
     email: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: 'email_unique_constraint', // Use a named constraint to avoid duplicate indexes
+        unique: 'email_unique_constraint',
     },
     password: {
         type: DataTypes.STRING,
@@ -22,7 +22,7 @@ const User = sequelize.define('User', {
     },
 }, {
     timestamps: true,
-    paranoid: true, // Enable soft deletes
+    paranoid: true,
 });
 
 module.exports = User;

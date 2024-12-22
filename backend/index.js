@@ -40,7 +40,6 @@ app.use((req, res, next) => {
 // Define routes
 app.use('/api/users', userRoutes);
 app.use('/api/templates', templateRoutes);
-// app.use('/api/auth', require('./routes/authRoutes')); // Add auth routes
 app.use('/api', authRoutes); // Auth routes (no protection)
 app.use('/api/generate-token', router)
 app.use('/api/forms', formRoutes); // Link the form routes
