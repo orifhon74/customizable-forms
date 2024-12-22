@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User'); // Sequelize User model
 const bcrypt = require('bcryptjs');
+const authenticate = require('../middleware/authenticate'); // JWT authentication middleware
 
-// Create a new user
+// Create a new user (Register)
 router.post('/', async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -37,8 +38,8 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Get all users
-router.get('/', async (req, res) => {
+// Get all users (Protected Route)
+router.get('/', authenticate, async (req, res) => {
     try {
         const users = await User.findAll();
         res.json(users);
@@ -47,8 +48,8 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get user by ID
-router.get('/:id', async (req, res) => {
+// Get user by ID (Protected Route)
+router.get('/:id', authenticate, async (req, res) => {
     try {
         const user = await User.findByPk(req.params.id);
         if (!user) return res.status(404).json({ error: 'User not found' });
@@ -58,8 +59,8 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Update user
-router.put('/:id', async (req, res) => {
+// Update user (Protected Route)
+router.put('/:id', authenticate, async (req, res) => {
     try {
         const { username, email } = req.body;
         const user = await User.findByPk(req.params.id);
@@ -72,8 +73,8 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// Delete user
-router.delete('/:id', async (req, res) => {
+// Delete user (Protected Route)
+router.delete('/:id', authenticate, async (req, res) => {
     try {
         const user = await User.findByPk(req.params.id);
         if (!user) return res.status(404).json({ error: 'User not found' });

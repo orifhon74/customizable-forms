@@ -7,6 +7,14 @@ const Template = sequelize.define('Template', {
     image_url: { type: DataTypes.STRING, allowNull: true },
     user_id: { type: DataTypes.INTEGER, allowNull: false },
     topic_id: { type: DataTypes.INTEGER, allowNull: false },
+    access_type: {
+        type: DataTypes.STRING, // 'public' or 'private'
+        defaultValue: 'public',
+    },
+    allowed_users: {
+        type: DataTypes.JSON, // Array of user IDs
+        allowNull: true,
+    },
 
     // String Questions
     custom_string1_state: { type: DataTypes.BOOLEAN, defaultValue: false },

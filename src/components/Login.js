@@ -1,36 +1,64 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const navigate = useNavigate();
 
-    const handleSubmit = async (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
+
         try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/login`, {
+            const response = await fetch('http://localhost:5001/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email, password }),
             });
 
             const data = await response.json();
-            if (data.token) {
-                localStorage.setItem('token', data.token);
-                alert('Login successful');
-            } else {
-                alert(data.error || 'Login failed');
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Login failed');
             }
-        } catch (error) {
-            console.error('Error logging in:', error);
+
+            // Store the JWT in localStorage
+            localStorage.setItem('token', data.token);
+
+            alert('Login successful');
+            navigate('/admin');
+        } catch (err) {
+            setError(err.message);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit}>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required />
-            <button type="submit">Login</button>
-        </form>
+        <div>
+            <h2>Login</h2>
+            {error && <p style={{ color: 'red' }}>{error}</p>}
+            <form onSubmit={handleLogin}>
+                <div>
+                    <label>Email:</label>
+                    <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                    />
+                </div>
+                <div>
+                    <label>Password:</label>
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                    />
+                </div>
+                <button type="submit">Login</button>
+            </form>
+        </div>
     );
 }
 

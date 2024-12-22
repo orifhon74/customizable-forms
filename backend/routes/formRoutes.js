@@ -1,27 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const Form = require('../models/Form'); // Sequelize Form model
-const authenticate = require('../middleware/authenticate'); // Middleware for JWT auth
+const Form = require('../models/Form');
+const Template = require('../models/Template');
+const authenticate = require('../middleware/authenticate'); // JWT authentication middleware
 
-// Submit a new form
-router.post('/', authenticate, async (req, res) => {
+// Fetch all forms for a user
+router.get('/', authenticate, async (req, res) => {
     try {
-        const form = await Form.create({
-            ...req.body,
-            user_id: req.user.id, // Attach the user ID from JWT
+        const forms = await Form.findAll({
+            where: { user_id: req.user.id }, // Forms belonging to the logged-in user
+            include: [
+                {
+                    model: Template, // Include associated templates
+                    attributes: ['title', 'description'], // Fetch template title and description
+                },
+            ],
         });
-        res.status(201).json(form);
-    } catch (err) {
-        console.error('Error creating form:', err);
-        res.status(500).json({ error: 'Failed to submit form' });
-    }
-});
-
-// Get all forms for a template
-router.get('/:templateId', authenticate, async (req, res) => {
-    try {
-        const { templateId } = req.params;
-        const forms = await Form.findAll({ where: { template_id: templateId } });
         res.json(forms);
     } catch (err) {
         console.error('Error fetching forms:', err);
@@ -29,18 +23,51 @@ router.get('/:templateId', authenticate, async (req, res) => {
     }
 });
 
-// Get details for a specific form
-router.get('/details/:formId', authenticate, async (req, res) => {
+// Fetch a specific form by ID
+router.get('/:id', authenticate, async (req, res) => {
     try {
-        const { formId } = req.params;
-        const form = await Form.findByPk(formId);
+        const form = await Form.findByPk(req.params.id, {
+            include: [
+                {
+                    model: Template,
+                    attributes: ['title', 'description'],
+                },
+            ],
+        });
+
         if (!form) {
             return res.status(404).json({ error: 'Form not found' });
         }
+
         res.json(form);
     } catch (err) {
-        console.error('Error fetching form details:', err);
-        res.status(500).json({ error: 'Failed to fetch form details' });
+        console.error('Error fetching form:', err);
+        res.status(500).json({ error: 'Failed to fetch form' });
+    }
+});
+
+// Create a new form (fill out a template)
+router.post('/', authenticate, async (req, res) => {
+    try {
+        const { template_id, answers } = req.body;
+
+        // Ensure the template exists
+        const template = await Template.findByPk(template_id);
+        if (!template) {
+            return res.status(404).json({ error: 'Template not found' });
+        }
+
+        // Create the form
+        const form = await Form.create({
+            user_id: req.user.id, // The logged-in user
+            template_id,
+            ...answers, // Spread the answers into the form model
+        });
+
+        res.status(201).json(form);
+    } catch (err) {
+        console.error('Error creating form:', err);
+        res.status(500).json({ error: 'Failed to create form' });
     }
 });
 

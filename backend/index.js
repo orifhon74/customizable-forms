@@ -5,6 +5,8 @@ const userRoutes = require('./routes/userRoutes'); // Adjust path if needed
 const templateRoutes = require('./routes/templateRoutes'); // Adjust path if needed
 const router = require('./routes/router')
 const formRoutes = require('./routes/formRoutes'); // Add form routes
+const adminRoutes = require('./routes/adminRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 
@@ -38,9 +40,11 @@ app.use((req, res, next) => {
 // Define routes
 app.use('/api/users', userRoutes);
 app.use('/api/templates', templateRoutes);
-app.use('/api/auth', require('./routes/authRoutes')); // Add auth routes
+// app.use('/api/auth', require('./routes/authRoutes')); // Add auth routes
+app.use('/api', authRoutes); // Auth routes (no protection)
 app.use('/api/generate-token', router)
 app.use('/api/forms', formRoutes); // Link the form routes
+app.use('/api/admin', adminRoutes);
 
 // Sync the database and start the server
 const PORT = process.env.PORT || 5001;
