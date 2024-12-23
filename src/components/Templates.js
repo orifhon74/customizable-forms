@@ -23,7 +23,7 @@ function Templates() {
                 }
 
                 const data = await response.json();
-                console.log('Fetched templates:', data);
+                console.log('Fetched templates:', data); // Debug fetched templates
                 setTemplates(data);
             } catch (err) {
                 console.error('Error fetching templates:', err.message);
@@ -47,7 +47,10 @@ function Templates() {
                 <ul>
                     {templates.map((template) => (
                         <li key={template.id}>
-                            <strong>{template.title}</strong> - {template.description}
+                            <strong>{template.title}</strong> - {template.description}{' '}
+                            {template.access_type === 'private' && (
+                                <span style={{ color: 'red' }}>(Private)</span>
+                            )}
                         </li>
                     ))}
                 </ul>

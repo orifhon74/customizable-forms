@@ -1,88 +1,79 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User'); // Sequelize User model
-const bcrypt = require('bcryptjs');
-const authenticate = require('../middleware/authenticate'); // JWT authentication middleware
+const User = require('../models/User');
+const authenticate = require('../middleware/authenticate');
+const authorizeAdmin = require('../middleware/authorizeAdmin');
 
-// Create a new user (Register)
-router.post('/', async (req, res) => {
+// Get all users (Admin-only)
+router.get('/', authenticate, authorizeAdmin, async (req, res) => {
     try {
-        const { username, email, password } = req.body;
-
-        // Validate required fields
-        if (!username || !email || !password) {
-            return res.status(400).json({ error: 'Missing required fields' });
-        }
-
-        // Check if the email already exists
-        const existingUser = await User.findOne({ where: { email } });
-        if (existingUser) {
-            return res.status(400).json({ error: 'Email already registered' });
-        }
-
-        // Hash the password (using bcrypt)
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Create the new user
-        const newUser = await User.create({
-            username,
-            email,
-            password: hashedPassword,
-            role: 'user',
+        const users = await User.findAll({
+            attributes: ['id', 'username', 'email', 'role', 'createdAt', 'updatedAt', 'deletedAt'],
+            paranoid: false, // Include soft-deleted users
         });
-
-        return res.status(201).json(newUser);
-    } catch (error) {
-        console.error('Error creating user:', error);
-        return res.status(500).json({ error: 'Failed to create user', details: error.message });
-    }
-});
-
-// Get all users (Protected Route)
-router.get('/', authenticate, async (req, res) => {
-    try {
-        const users = await User.findAll();
         res.json(users);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch users', details: error.message });
+    } catch (err) {
+        console.error('Error fetching users:', err);
+        res.status(500).json({ error: 'Failed to fetch users' });
     }
 });
 
-// Get user by ID (Protected Route)
-router.get('/:id', authenticate, async (req, res) => {
+// Update user role (Admin-only)
+router.put('/:id/role', authenticate, authorizeAdmin, async (req, res) => {
     try {
+        const { role } = req.body;
+        if (!['user', 'admin'].includes(role)) {
+            return res.status(400).json({ error: 'Invalid role' });
+        }
+
         const user = await User.findByPk(req.params.id);
-        if (!user) return res.status(404).json({ error: 'User not found' });
-        res.json(user);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch user', details: error.message });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        await user.update({ role });
+        res.json({ message: 'User role updated successfully', user });
+    } catch (err) {
+        console.error('Error updating user role:', err);
+        res.status(500).json({ error: 'Failed to update user role' });
     }
 });
 
-// Update user (Protected Route)
-router.put('/:id', authenticate, async (req, res) => {
+// Block/Unblock user (Admin-only)
+router.put('/:id/block', authenticate, authorizeAdmin, async (req, res) => {
     try {
-        const { username, email } = req.body;
         const user = await User.findByPk(req.params.id);
-        if (!user) return res.status(404).json({ error: 'User not found' });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
 
-        await user.update({ username, email });
-        res.json(user);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update user', details: error.message });
+        // Soft delete to block; restore to unblock
+        if (user.deletedAt) {
+            await user.restore();
+            res.json({ message: 'User unblocked successfully' });
+        } else {
+            await user.destroy();
+            res.json({ message: 'User blocked successfully' });
+        }
+    } catch (err) {
+        console.error('Error blocking/unblocking user:', err);
+        res.status(500).json({ error: 'Failed to block/unblock user' });
     }
 });
 
-// Delete user (Protected Route)
-router.delete('/:id', authenticate, async (req, res) => {
+// Delete user (Admin-only)
+router.delete('/:id', authenticate, authorizeAdmin, async (req, res) => {
     try {
         const user = await User.findByPk(req.params.id);
-        if (!user) return res.status(404).json({ error: 'User not found' });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
 
-        await user.destroy();
+        await user.destroy({ force: true }); // Permanently delete the user
         res.json({ message: 'User deleted successfully' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to delete user', details: error.message });
+    } catch (err) {
+        console.error('Error deleting user:', err);
+        res.status(500).json({ error: 'Failed to delete user' });
     }
 });
 

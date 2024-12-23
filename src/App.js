@@ -8,6 +8,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import TemplateForm from './components/TemplateForm';
 import FormSubmission from './components/FormSubmission';
+import AdminUserManagement from "./components/AdminUserManagement";
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -63,6 +64,7 @@ function App() {
 
                 <Routes>
                     <Route path="/" element={<Navigate to="/login" />} />
+                    <Route path="/admin/users" element={userRole === 'admin' ? <AdminUserManagement /> : <Navigate to="/" />} />
                     <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} setUserRole={setUserRole} />} />
                     <Route path="/register" element={<Register />} />
                     <Route
@@ -82,7 +84,7 @@ function App() {
                         element={isAuthenticated ? <TemplateForm /> : <Navigate to="/login" />}
                     />
                     <Route
-                        path="/submit-form/:id"
+                        path="/submit-form/:templateId"
                         element={isAuthenticated ? <FormSubmission /> : <Navigate to="/login" />}
                     />
                     <Route

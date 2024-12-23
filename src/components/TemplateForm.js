@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 function TemplateForm() {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [accessType, setAccessType] = useState('public'); // Add access type
-    const [allowedUsers, setAllowedUsers] = useState(''); // Comma-separated user IDs
+    const [accessType, setAccessType] = useState('public');
+    const [topicId, setTopicId] = useState(1); // Default topic ID
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
 
@@ -17,6 +17,17 @@ function TemplateForm() {
             return;
         }
 
+        const payload = {
+            title,
+            description,
+            access_type: accessType,
+            topic_id: topicId,
+            custom_string1_state: true,
+            custom_string1_question: 'What is your name?', // Hardcoded for testing
+        };
+
+        console.log('Submitting Template Payload:', payload); // Debug payload
+
         try {
             const response = await fetch('http://localhost:5001/api/templates', {
                 method: 'POST',
@@ -24,16 +35,7 @@ function TemplateForm() {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({
-                    title,
-                    description,
-                    access_type: accessType,
-                    allowed_users: allowedUsers
-                        ? allowedUsers.split(',').map((id) => parseInt(id.trim()))
-                        : null,
-                    custom_string1_state: true,
-                    custom_string1_question: 'Sample question?', // Hardcoded for simplicity
-                }),
+                body: JSON.stringify(payload),
             });
 
             if (!response.ok) {
@@ -45,7 +47,6 @@ function TemplateForm() {
             setTitle('');
             setDescription('');
             setAccessType('public');
-            setAllowedUsers('');
         } catch (err) {
             setError(err.message);
         }
@@ -59,29 +60,39 @@ function TemplateForm() {
             <form onSubmit={handleSubmit}>
                 <div>
                     <label>Title:</label>
-                    <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required />
+                    <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        required
+                    />
                 </div>
                 <div>
                     <label>Description:</label>
-                    <textarea value={description} onChange={(e) => setDescription(e.target.value)} required />
+                    <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                    />
                 </div>
                 <div>
                     <label>Access Type:</label>
-                    <select value={accessType} onChange={(e) => setAccessType(e.target.value)}>
+                    <select
+                        value={accessType}
+                        onChange={(e) => setAccessType(e.target.value)}
+                    >
                         <option value="public">Public</option>
                         <option value="private">Private</option>
                     </select>
                 </div>
-                {accessType === 'private' && (
-                    <div>
-                        <label>Allowed Users (comma-separated IDs):</label>
-                        <input
-                            type="text"
-                            value={allowedUsers}
-                            onChange={(e) => setAllowedUsers(e.target.value)}
-                        />
-                    </div>
-                )}
+                <div>
+                    <label>Topic ID:</label>
+                    <input
+                        type="number"
+                        value={topicId}
+                        onChange={(e) => setTopicId(Number(e.target.value))}
+                        required
+                    />
+                </div>
                 <button type="submit">Create Template</button>
             </form>
         </div>

@@ -4,18 +4,20 @@ const Template = require('../models/Template');
 const Form = require('../models/Form');
 const authenticate = require('../middleware/authenticate'); // JWT authentication middleware
 const authorizeAdmin = require('../middleware/authorizeAdmin'); // Admin middleware
-const sequelize = require('../db');
+// const sequelize = require('../db');
+const { Op } = require('sequelize'); // Ensure this is properly imported
 
 // Create a new template
 router.post('/', authenticate, async (req, res) => {
     try {
+        console.log('Incoming Template Payload:', req.body); // Debug incoming payload
+
         const {
             title,
             description,
             image_url,
             topic_id,
             access_type,
-            allowed_users,
             custom_string1_state,
             custom_string1_question,
             custom_int1_state,
@@ -24,26 +26,37 @@ router.post('/', authenticate, async (req, res) => {
             custom_checkbox1_question,
         } = req.body;
 
+        // Validate required fields
+        if (!title || !topic_id) {
+            console.error('Validation Error: Missing required fields');
+            return res.status(400).json({ error: 'Title and Topic ID are required' });
+        }
+
+        // Private templates are restricted to the creator by default
+        const allowedUsers = access_type === 'private' ? [req.user.id] : null;
+
+        // Create the template
         const template = await Template.create({
             title,
-            description,
-            image_url,
-            user_id: req.user.id,
+            description: description || null,
+            image_url: image_url || null,
+            user_id: req.user.id, // Authenticated user ID
             topic_id,
             access_type,
-            allowed_users: allowed_users || null, // Ensure it's either a valid array or null
-            custom_string1_state,
-            custom_string1_question,
-            custom_int1_state,
-            custom_int1_question,
-            custom_checkbox1_state,
-            custom_checkbox1_question,
+            allowed_users: allowedUsers,
+            custom_string1_state: custom_string1_state || false,
+            custom_string1_question: custom_string1_question || null,
+            custom_int1_state: custom_int1_state || false,
+            custom_int1_question: custom_int1_question || null,
+            custom_checkbox1_state: custom_checkbox1_state || false,
+            custom_checkbox1_question: custom_checkbox1_question || null,
         });
 
-        res.status(201).json(template);
+        console.log('Template Created Successfully:', template);
+        res.status(201).json({ message: 'Template created successfully', template });
     } catch (err) {
-        console.error('Error creating template:', err.message);
-        res.status(500).json({ error: 'Failed to create template' });
+        console.error('Error creating template:', err);
+        res.status(500).json({ error: 'Failed to create template', details: err.message });
     }
 });
 
@@ -53,11 +66,13 @@ router.get('/', authenticate, async (req, res) => {
         let templates;
 
         if (req.user.role === 'admin') {
+            // Admin can see all templates
             templates = await Template.findAll();
         } else {
+            // Regular users see only public templates or their own
             templates = await Template.findAll({
                 where: {
-                    [sequelize.Op.or]: [
+                    [Op.or]: [
                         { access_type: 'public' },
                         { user_id: req.user.id },
                     ],
@@ -68,7 +83,7 @@ router.get('/', authenticate, async (req, res) => {
         res.json(templates);
     } catch (err) {
         console.error('Error fetching templates:', err);
-        res.status(500).json({ error: 'Failed to fetch templates' });
+        res.status(500).json({ error: 'Failed to fetch templates', details: err.message });
     }
 });
 
