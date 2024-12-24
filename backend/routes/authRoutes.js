@@ -58,30 +58,27 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        console.log('Login request received:', req.body); // Log request body
-
-        // Find user by email
         const user = await User.findOne({ where: { email } });
+
         if (!user) {
-            console.log('User not found for email:', email);
             return res.status(404).json({ error: 'Invalid credentials' });
         }
 
-        // Compare passwords
+        // Check if user is blocked (soft deleted)
+        if (user.deletedAt) {
+            return res.status(403).json({ error: 'User is blocked. Please contact the admin.' });
+        }
+
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            console.log('Password mismatch for user:', email);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Generate JWT
         const token = jwt.sign(
             { id: user.id, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
-
-        console.log('Login successful for user:', user.username);
 
         res.json({
             message: 'Login successful',
@@ -93,8 +90,8 @@ router.post('/login', async (req, res) => {
             },
         });
     } catch (err) {
-        console.error('Error during login:', err.message); // Log error details
-        res.status(500).json({ error: 'Internal server error', details: err.message });
+        console.error('Error during login:', err.message);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

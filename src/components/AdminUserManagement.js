@@ -50,6 +50,7 @@ function AdminUserManagement() {
             fetchUsers(); // Refresh user list
         } catch (err) {
             console.error(err.message);
+            setError('Failed to update role');
         }
     };
 
@@ -68,6 +69,7 @@ function AdminUserManagement() {
             fetchUsers(); // Refresh user list
         } catch (err) {
             console.error(err.message);
+            setError('Failed to block/unblock user');
         }
     };
 
@@ -86,6 +88,7 @@ function AdminUserManagement() {
             fetchUsers(); // Refresh user list
         } catch (err) {
             console.error(err.message);
+            setError('Failed to delete user');
         }
     };
 

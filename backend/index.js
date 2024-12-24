@@ -5,7 +5,6 @@ const userRoutes = require('./routes/userRoutes'); // Adjust path if needed
 const templateRoutes = require('./routes/templateRoutes'); // Adjust path if needed
 const router = require('./routes/router')
 const formRoutes = require('./routes/formRoutes'); // Add form routes
-const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
 
 const app = express();
@@ -13,7 +12,7 @@ const app = express();
 // Apply CORS globally
 const allowedOrigins = [
     'http://localhost:3000',
-    'https://customizable-forms-xi.vercel.app', // Add production frontend URL if needed
+    'https://customizable-forms-xi.vercel.app',
 ];
 
 app.use(cors({
@@ -43,7 +42,6 @@ app.use('/api/templates', templateRoutes);
 app.use('/api', authRoutes); // Auth routes (no protection)
 app.use('/api/generate-token', router)
 app.use('/api/forms', formRoutes); // Link the form routes
-app.use('/api/admin', adminRoutes);
 
 // Sync the database and start the server
 const PORT = process.env.PORT || 5001;
