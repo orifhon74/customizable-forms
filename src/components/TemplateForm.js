@@ -67,7 +67,6 @@ function TemplateForm() {
                         ],
                     });
                 } catch (err) {
-                    console.error(err.message);
                     setError('Failed to load template for editing.');
                 }
             };
@@ -99,30 +98,43 @@ function TemplateForm() {
 
             const method = isEditMode ? 'PUT' : 'POST';
 
+            const requestBody = {
+                title,
+                description,
+                access_type: accessType,
+                topic_id: topic, // Pass topic_id to backend
+                custom_string1_question: questions.stringQuestions[0] || null,
+                custom_string2_question: questions.stringQuestions[1] || null,
+                custom_string3_question: questions.stringQuestions[2] || null,
+                custom_string4_question: questions.stringQuestions[3] || null,
+                custom_multiline1_question: questions.multilineQuestions[0] || null,
+                custom_multiline2_question: questions.multilineQuestions[1] || null,
+                custom_multiline3_question: questions.multilineQuestions[2] || null,
+                custom_multiline4_question: questions.multilineQuestions[3] || null,
+                custom_int1_question: questions.intQuestions[0] || null,
+                custom_int2_question: questions.intQuestions[1] || null,
+                custom_int3_question: questions.intQuestions[2] || null,
+                custom_int4_question: questions.intQuestions[3] || null,
+                custom_checkbox1_question: questions.checkboxQuestions[0] || null,
+                custom_checkbox2_question: questions.checkboxQuestions[1] || null,
+                custom_checkbox3_question: questions.checkboxQuestions[2] || null,
+                custom_checkbox4_question: questions.checkboxQuestions[3] || null,
+            };
+
             const response = await fetch(url, {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({
-                    title,
-                    description,
-                    access_type: accessType,
-                    topic_id: topic, // Pass topic_id to backend
-                    ...questions,
-                }),
+                body: JSON.stringify(requestBody),
             });
 
             if (!response.ok) throw new Error(`Failed to ${isEditMode ? 'update' : 'create'} template`);
 
-            const data = await response.json();
             setSuccess(`Template ${isEditMode ? 'updated' : 'created'} successfully!`);
-
-            console.log(`Template ${isEditMode ? 'updated' : 'created'} successfully`);
             navigate('/templates'); // Redirect to templates page after success
         } catch (err) {
-            console.error(err.message);
             setError(`Failed to ${isEditMode ? 'update' : 'create'} template`);
         }
     };
@@ -178,7 +190,7 @@ function TemplateForm() {
                         key={i}
                         value={q}
                         onChange={(e) => handleQuestionChange('stringQuestions', i, e.target.value)}
-                        placeholder={`Question ${i + 1}`}
+                        placeholder={`String Question ${i + 1}`}
                     />
                 ))}
                 <h3>Multi-line Text Questions</h3>
@@ -196,7 +208,7 @@ function TemplateForm() {
                         key={i}
                         value={q}
                         onChange={(e) => handleQuestionChange('intQuestions', i, e.target.value)}
-                        placeholder={`Question ${i + 1}`}
+                        placeholder={`Integer Question ${i + 1}`}
                     />
                 ))}
                 <h3>Checkbox Questions</h3>
@@ -205,7 +217,7 @@ function TemplateForm() {
                         key={i}
                         value={q}
                         onChange={(e) => handleQuestionChange('checkboxQuestions', i, e.target.value)}
-                        placeholder={`Question ${i + 1}`}
+                        placeholder={`Checkbox Question ${i + 1}`}
                     />
                 ))}
                 <button type="submit">{isEditMode ? 'Save Changes' : 'Create Template'}</button>

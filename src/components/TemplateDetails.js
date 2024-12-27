@@ -39,8 +39,9 @@ function TemplateDetails() {
         }
     };
 
-    const handleEdit = () => {
-        navigate(`/create-template?edit=true&templateId=${id}`);
+    const handleEdit = (templateId) => {
+        console.log(`Editing template with ID: ${templateId}`);
+        navigate(`/create-template?edit=true&templateId=${templateId}`);
     };
 
     if (error) {
@@ -60,7 +61,7 @@ function TemplateDetails() {
             <p>Access Type: {template.access_type}</p>
             {(isAdmin || isOwner) && (
                 <div>
-                    <button onClick={handleEdit}>Edit</button>
+                    <button onClick={() => handleEdit(template.id)}>Edit Template</button>
                     <button onClick={handleDelete}>Delete</button>
                 </div>
             )}

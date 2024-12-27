@@ -10,7 +10,6 @@ import FormSubmission from './components/FormSubmission';
 import Forms from './components/Forms';
 import Login from './components/Login';
 import Register from './components/Register';
-import TemplateDetails from './components/TemplateDetails'; // New component for Template Details
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -116,9 +115,20 @@ function App() {
                         path="/submit-form/:templateId"
                         element={isAuthenticated ? <FormSubmission /> : <Navigate to="/login" />}
                     />
+                    {/*<Route*/}
+                    {/*    path="/template/:id"*/}
+                    {/*    element={isAuthenticated ? <TemplateDetails /> : <Navigate to="/login" />}*/}
+                    {/*/>*/}
+
                     <Route
                         path="/template/:id"
-                        element={isAuthenticated ? <TemplateDetails /> : <Navigate to="/login" />}
+                        element={
+                            isAuthenticated ? (
+                                <Templates />
+                            ) : (
+                                <Navigate to="/login" />
+                            )
+                        }
                     />
 
                     {/* Default Dashboard Route */}
