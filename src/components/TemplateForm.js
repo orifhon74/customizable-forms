@@ -1,6 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 function TemplateForm() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const queryParams = new URLSearchParams(location.search);
+    const isEditMode = queryParams.get('edit') === 'true'; // Check if editing mode
+    const templateId = queryParams.get('templateId'); // Get template ID if editing
+
     const [questions, setQuestions] = useState({
         stringQuestions: ['', '', '', ''],
         multilineQuestions: ['', '', '', ''],
@@ -14,6 +21,61 @@ function TemplateForm() {
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
 
+    useEffect(() => {
+        if (isEditMode && templateId) {
+            // Fetch template details to pre-fill the form
+            const fetchTemplate = async () => {
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(`http://localhost:5001/api/templates/${templateId}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+
+                    if (!response.ok) throw new Error('Failed to fetch template for editing');
+
+                    const data = await response.json();
+
+                    // Populate form fields
+                    setTitle(data.title);
+                    setDescription(data.description);
+                    setAccessType(data.access_type || 'public');
+                    setTopic(data.topic_id || '');
+                    setQuestions({
+                        stringQuestions: [
+                            data.custom_string1_question || '',
+                            data.custom_string2_question || '',
+                            data.custom_string3_question || '',
+                            data.custom_string4_question || '',
+                        ],
+                        multilineQuestions: [
+                            data.custom_multiline1_question || '',
+                            data.custom_multiline2_question || '',
+                            data.custom_multiline3_question || '',
+                            data.custom_multiline4_question || '',
+                        ],
+                        intQuestions: [
+                            data.custom_int1_question || '',
+                            data.custom_int2_question || '',
+                            data.custom_int3_question || '',
+                            data.custom_int4_question || '',
+                        ],
+                        checkboxQuestions: [
+                            data.custom_checkbox1_question || '',
+                            data.custom_checkbox2_question || '',
+                            data.custom_checkbox3_question || '',
+                            data.custom_checkbox4_question || '',
+                        ],
+                    });
+                } catch (err) {
+                    console.error(err.message);
+                    setError('Failed to load template for editing.');
+                }
+            };
+
+            fetchTemplate();
+        }
+    }, [isEditMode, templateId]);
+
     const handleQuestionChange = (type, index, value) => {
         setQuestions((prev) => ({
             ...prev,
@@ -26,13 +88,19 @@ function TemplateForm() {
         const token = localStorage.getItem('token');
 
         if (!token) {
-            setError('You must be logged in to create a template');
+            setError('You must be logged in to create or edit a template');
             return;
         }
 
         try {
-            const response = await fetch('http://localhost:5001/api/templates', {
-                method: 'POST',
+            const url = isEditMode
+                ? `http://localhost:5001/api/templates/${templateId}`
+                : 'http://localhost:5001/api/templates';
+
+            const method = isEditMode ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method,
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
@@ -46,21 +114,22 @@ function TemplateForm() {
                 }),
             });
 
-            if (!response.ok) throw new Error('Failed to create template');
+            if (!response.ok) throw new Error(`Failed to ${isEditMode ? 'update' : 'create'} template`);
 
             const data = await response.json();
-            setSuccess('Template created successfully!');
+            setSuccess(`Template ${isEditMode ? 'updated' : 'created'} successfully!`);
 
-            console.log('Template created successfully');
+            console.log(`Template ${isEditMode ? 'updated' : 'created'} successfully`);
+            navigate('/templates'); // Redirect to templates page after success
         } catch (err) {
             console.error(err.message);
-            setError('Failed to create template');
+            setError(`Failed to ${isEditMode ? 'update' : 'create'} template`);
         }
     };
 
     return (
         <div>
-            <h1>Create Template</h1>
+            <h1>{isEditMode ? 'Edit Template' : 'Create Template'}</h1>
             {error && <p style={{ color: 'red' }}>{error}</p>}
             {success && <p style={{ color: 'green' }}>{success}</p>}
             <form onSubmit={handleSubmit}>
@@ -101,7 +170,6 @@ function TemplateForm() {
                         <option value="1">Education</option>
                         <option value="2">Quiz</option>
                         <option value="3">Other</option>
-                        {/* Add more topics as needed */}
                     </select>
                 </div>
                 <h3>String Questions</h3>
@@ -140,7 +208,7 @@ function TemplateForm() {
                         placeholder={`Question ${i + 1}`}
                     />
                 ))}
-                <button type="submit">Create Template</button>
+                <button type="submit">{isEditMode ? 'Save Changes' : 'Create Template'}</button>
             </form>
         </div>
     );

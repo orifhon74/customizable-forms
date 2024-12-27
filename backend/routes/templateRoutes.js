@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Template = require('../models/Template');
+const Form = require('../models/Form');
 const authenticate = require('../middleware/authenticate');
 const { Op } = require('sequelize');
 
@@ -127,7 +128,7 @@ router.post('/', authenticate, async (req, res) => {
     }
 });
 
-// Get a single template by ID
+// Get a template
 router.get('/:id', authenticate, async (req, res) => {
     try {
         const template = await Template.findByPk(req.params.id);
@@ -136,7 +137,7 @@ router.get('/:id', authenticate, async (req, res) => {
             return res.status(404).json({ error: 'Template not found' });
         }
 
-        // Only allow access if the template is public, belongs to the user, or the user is an admin
+        // Check if user has access
         if (
             template.access_type !== 'public' &&
             template.user_id !== req.user.id &&
@@ -152,7 +153,7 @@ router.get('/:id', authenticate, async (req, res) => {
     }
 });
 
-// Example for template update
+// Update a template
 router.put('/:id', authenticate, async (req, res) => {
     try {
         const { id } = req.params;
@@ -164,16 +165,59 @@ router.put('/:id', authenticate, async (req, res) => {
             return res.status(404).json({ error: 'Template not found' });
         }
 
-        // Allow admins to update any template
         if (template.user_id !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({ error: 'Unauthorized to update this template' });
         }
 
         await template.update(updates);
-        res.json(template);
+        res.json({ message: 'Template updated successfully', template });
     } catch (err) {
         console.error('Error updating template:', err);
         res.status(500).json({ error: 'Failed to update template' });
+    }
+});
+
+// Delete a template (Admin or Owner)
+router.delete('/:id', authenticate, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const template = await Template.findByPk(id);
+
+        if (!template) {
+            return res.status(404).json({ error: 'Template not found' });
+        }
+
+        if (template.user_id !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Unauthorized to delete this template' });
+        }
+
+        await template.destroy();
+        res.status(200).json({ message: 'Template deleted successfully' });
+    } catch (err) {
+        console.error('Error deleting template:', err);
+        res.status(500).json({ error: 'Failed to delete template' });
+    }
+});
+
+// Get all forms for a template (Admin or Owner)
+router.get('/:id/forms', authenticate, async (req, res) => {
+    try {
+        const template = await Template.findByPk(req.params.id);
+
+        if (!template) {
+            return res.status(404).json({ error: 'Template not found' });
+        }
+
+        // Check if user is admin or owner
+        if (template.user_id !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+
+        const forms = await Form.findAll({ where: { template_id: template.id } });
+        res.json(forms);
+    } catch (err) {
+        console.error('Error fetching forms:', err);
+        res.status(500).json({ error: 'Failed to fetch forms' });
     }
 });
 

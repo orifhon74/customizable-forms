@@ -28,4 +28,11 @@ const authenticate = (req, res, next) => {
     }
 };
 
+const restrictNonAuthenticated = (req, res, next) => {
+    if (!req.user) {
+        return res.status(403).json({ error: 'Authentication required' });
+    }
+    next();
+};
+
 module.exports = authenticate;

@@ -4,12 +4,13 @@ import AdminDashboard from './components/AdminDashboard';
 import AdminUserManagement from './components/AdminUserManagement';
 import UserDashboard from './components/UserDashboard';
 import Templates from './components/Templates';
+import PublicTemplates from './components/PublicTemplates';
+import TemplateForm from './components/TemplateForm';
+import FormSubmission from './components/FormSubmission';
 import Forms from './components/Forms';
 import Login from './components/Login';
 import Register from './components/Register';
-import TemplateForm from './components/TemplateForm';
-import FormSubmission from './components/FormSubmission';
-import PublicTemplates from "./components/PublicTemplates";
+import TemplateDetails from './components/TemplateDetails'; // New component for Template Details
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -49,6 +50,9 @@ function App() {
                                     <li className="nav-item">
                                         <Link className="nav-link" to="/register">Register</Link>
                                     </li>
+                                    <li className="nav-item">
+                                        <Link className="nav-link" to="/public-templates">Public Templates</Link>
+                                    </li>
                                 </>
                             ) : (
                                 <>
@@ -75,10 +79,6 @@ function App() {
                                         <Link className="nav-link" to="/create-template">Create Template</Link>
                                     </li>
                                     <li className="nav-item">
-                                        <Link className="nav-link" to="/submit-form/1">Submit Form</Link>
-                                    </li>
-                                    {/* Replace `1` with dynamic template ID */}
-                                    <li className="nav-item">
                                         <button className="btn btn-link nav-link" onClick={handleLogout}>Logout</button>
                                     </li>
                                 </>
@@ -93,6 +93,7 @@ function App() {
                     <Route path="/" element={<Navigate to="/login" />} />
                     <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} setUserRole={setUserRole} />} />
                     <Route path="/register" element={<Register />} />
+                    <Route path="/public-templates" element={<PublicTemplates />} />
 
                     {/* Admin Routes */}
                     <Route path="/admin" element={userRole === 'admin' ? <AdminDashboard /> : <Navigate to="/" />} />
@@ -103,7 +104,6 @@ function App() {
                         path="/templates"
                         element={isAuthenticated ? <Templates /> : <Navigate to="/login" />}
                     />
-                    <Route path="/public-templates" element={<PublicTemplates />} />
                     <Route
                         path="/forms"
                         element={isAuthenticated ? <Forms /> : <Navigate to="/login" />}
@@ -115,6 +115,10 @@ function App() {
                     <Route
                         path="/submit-form/:templateId"
                         element={isAuthenticated ? <FormSubmission /> : <Navigate to="/login" />}
+                    />
+                    <Route
+                        path="/template/:id"
+                        element={isAuthenticated ? <TemplateDetails /> : <Navigate to="/login" />}
                     />
 
                     {/* Default Dashboard Route */}
