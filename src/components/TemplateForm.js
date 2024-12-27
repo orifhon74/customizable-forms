@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 function TemplateForm() {
     const [questions, setQuestions] = useState({
         stringQuestions: ['', '', '', ''],
+        multilineQuestions: ['', '', '', ''],
         intQuestions: ['', '', '', ''],
         checkboxQuestions: ['', '', '', ''],
     });
@@ -110,6 +111,15 @@ function TemplateForm() {
                         value={q}
                         onChange={(e) => handleQuestionChange('stringQuestions', i, e.target.value)}
                         placeholder={`Question ${i + 1}`}
+                    />
+                ))}
+                <h3>Multi-line Text Questions</h3>
+                {questions.multilineQuestions.map((q, i) => (
+                    <textarea
+                        key={i}
+                        value={q}
+                        onChange={(e) => handleQuestionChange('multilineQuestions', i, e.target.value)}
+                        placeholder={`Multi-line Question ${i + 1}`}
                     />
                 ))}
                 <h3>Integer Questions</h3>

@@ -33,6 +33,16 @@ const Template = sequelize.define('Template', {
     custom_string4_state: { type: DataTypes.BOOLEAN, defaultValue: false },
     custom_string4_question: { type: DataTypes.STRING, allowNull: true },
 
+    // Multi-line text questions
+    custom_multiline1_state: { type: DataTypes.BOOLEAN, defaultValue: false },
+    custom_multiline1_question: { type: DataTypes.STRING, allowNull: true },
+    custom_multiline2_state: { type: DataTypes.BOOLEAN, defaultValue: false },
+    custom_multiline2_question: { type: DataTypes.STRING, allowNull: true },
+    custom_multiline3_state: { type: DataTypes.BOOLEAN, defaultValue: false },
+    custom_multiline3_question: { type: DataTypes.STRING, allowNull: true },
+    custom_multiline4_state: { type: DataTypes.BOOLEAN, defaultValue: false },
+    custom_multiline4_question: { type: DataTypes.STRING, allowNull: true },
+
     // Integer Questions
     custom_int1_state: { type: DataTypes.BOOLEAN, defaultValue: false },
     custom_int1_question: { type: DataTypes.STRING, allowNull: true },

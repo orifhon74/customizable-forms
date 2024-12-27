@@ -41,6 +41,25 @@ router.get('/', authenticate, async (req, res) => {
     }
 });
 
+router.get('/', async (req, res) => {
+    const { search } = req.query;
+
+    try {
+        const whereClause = search
+            ? { [Op.or]: [
+                    { title: { [Op.like]: `%${search}%` } },
+                    { description: { [Op.like]: `%${search}%` } },
+                ]}
+            : {};
+
+        const templates = await Template.findAll({ where: whereClause });
+        res.json(templates);
+    } catch (err) {
+        console.error('Error fetching templates:', err);
+        res.status(500).json({ error: 'Failed to fetch templates' });
+    }
+});
+
 
 // Create a new template
 router.post('/', authenticate, async (req, res) => {
@@ -49,8 +68,9 @@ router.post('/', authenticate, async (req, res) => {
             title,
             description,
             access_type,
-            topic_id, // Expecting topic_id from frontend
+            topic_id,
             stringQuestions,
+            multilineQuestions,
             intQuestions,
             checkboxQuestions,
         } = req.body;
@@ -74,6 +94,14 @@ router.post('/', authenticate, async (req, res) => {
             custom_string3_question: stringQuestions[2] || null,
             custom_string4_state: !!stringQuestions[3],
             custom_string4_question: stringQuestions[3] || null,
+            custom_multiline1_state: !!multilineQuestions[0],
+            custom_multiline1_question: multilineQuestions[0] || null,
+            custom_multiline2_state: !!multilineQuestions[1],
+            custom_multiline2_question: multilineQuestions[1] || null,
+            custom_multiline3_state: !!multilineQuestions[2],
+            custom_multiline3_question: multilineQuestions[2] || null,
+            custom_multiline4_state: !!multilineQuestions[3],
+            custom_multiline4_question: multilineQuestions[3] || null,
             custom_int1_state: !!intQuestions[0],
             custom_int1_question: intQuestions[0] || null,
             custom_int2_state: !!intQuestions[1],
@@ -99,7 +127,6 @@ router.post('/', authenticate, async (req, res) => {
     }
 });
 
-// Fetch a single template
 // Get a single template by ID
 router.get('/:id', authenticate, async (req, res) => {
     try {
@@ -122,6 +149,31 @@ router.get('/:id', authenticate, async (req, res) => {
     } catch (err) {
         console.error('Error fetching template:', err);
         res.status(500).json({ error: 'Failed to fetch template' });
+    }
+});
+
+// Example for template update
+router.put('/:id', authenticate, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+
+        const template = await Template.findByPk(id);
+
+        if (!template) {
+            return res.status(404).json({ error: 'Template not found' });
+        }
+
+        // Allow admins to update any template
+        if (template.user_id !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Unauthorized to update this template' });
+        }
+
+        await template.update(updates);
+        res.json(template);
+    } catch (err) {
+        console.error('Error updating template:', err);
+        res.status(500).json({ error: 'Failed to update template' });
     }
 });
 

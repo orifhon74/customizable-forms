@@ -75,14 +75,18 @@
                 string2_answer,
                 string3_answer,
                 string4_answer,
+                multiline1_answer,
+                multiline2_answer,
+                multiline3_answer,
+                multiline4_answer,
                 int1_answer,
                 int2_answer,
                 int3_answer,
                 int4_answer,
-                checkbox1_answer,
-                checkbox2_answer,
-                checkbox3_answer,
-                checkbox4_answer,
+                checkbox1_answer = false,
+                checkbox2_answer = false,
+                checkbox3_answer = false,
+                checkbox4_answer = false,
             } = req.body;
 
             // Validate answers based on template structure
@@ -97,6 +101,19 @@
             }
             if (template.custom_string4_state && (!string4_answer || typeof string4_answer !== 'string')) {
                 return res.status(400).json({ error: 'Invalid or missing string4_answer' });
+            }
+
+            if (template.custom_multiline1_state && (!multiline1_answer || typeof multiline1_answer !== 'string')) {
+                return res.status(400).json({ error: 'Invalid or missing multiline1_answer' });
+            }
+            if (template.custom_multiline2_state && (!multiline2_answer || typeof multiline2_answer !== 'string')) {
+                return res.status(400).json({ error: 'Invalid or missing multiline2_answer' });
+            }
+            if (template.custom_multiline3_state && (!multiline3_answer || typeof multiline3_answer !== 'string')) {
+                return res.status(400).json({ error: 'Invalid or missing multiline3_answer' });
+            }
+            if (template.custom_multiline4_state && (!multiline4_answer || typeof multiline4_answer !== 'string')) {
+                return res.status(400).json({ error: 'Invalid or missing multiline4_answer' });
             }
 
             if (template.custom_int1_state && (isNaN(int1_answer) || int1_answer === null)) {
@@ -133,14 +150,18 @@
                 string2_answer: string2_answer || null,
                 string3_answer: string3_answer || null,
                 string4_answer: string4_answer || null,
+                multiline1_answer: multiline1_answer || null,
+                multiline2_answer: multiline2_answer || null,
+                multiline3_answer: multiline3_answer || null,
+                multiline4_answer: multiline4_answer || null,
                 int1_answer: int1_answer || null,
                 int2_answer: int2_answer || null,
                 int3_answer: int3_answer || null,
                 int4_answer: int4_answer || null,
-                checkbox1_answer: checkbox1_answer || null,
-                checkbox2_answer: checkbox2_answer || null,
-                checkbox3_answer: checkbox3_answer || null,
-                checkbox4_answer: checkbox4_answer || null,
+                checkbox1_answer,
+                checkbox2_answer,
+                checkbox3_answer,
+                checkbox4_answer,
             });
 
             res.status(201).json({ message: 'Form submitted successfully', form });

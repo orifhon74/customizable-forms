@@ -35,7 +35,8 @@ function FormSubmission() {
 
     // Handle input change
     const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
+        const { name, type, checked, value } = e.target;
+
         setFormData((prevData) => ({
             ...prevData,
             [name]: type === 'checkbox' ? checked : value,
@@ -121,6 +122,44 @@ function FormSubmission() {
                         <input
                             type="text"
                             name="string4_answer"
+                            onChange={handleChange}
+                        />
+                    </div>
+                )}
+
+                {/* Multi-line Text Questions */}
+                {template.custom_multiline1_state && (
+                    <div>
+                        <label>{template.custom_multiline1_question}</label>
+                        <textarea
+                            name="multiline1_answer"
+                            onChange={handleChange}
+                        />
+                    </div>
+                )}
+                {template.custom_multiline2_state && (
+                    <div>
+                        <label>{template.custom_multiline2_question}</label>
+                        <textarea
+                            name="multiline1_answer"
+                            onChange={handleChange}
+                        />
+                    </div>
+                )}
+                {template.custom_multiline3_state && (
+                    <div>
+                        <label>{template.custom_multiline3_question}</label>
+                        <textarea
+                            name="multiline1_answer"
+                            onChange={handleChange}
+                        />
+                    </div>
+                )}
+                {template.custom_multiline4_state && (
+                    <div>
+                        <label>{template.custom_multiline4_question}</label>
+                        <textarea
+                            name="multiline1_answer"
                             onChange={handleChange}
                         />
                     </div>

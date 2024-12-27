@@ -21,11 +21,12 @@ router.get('/', authenticate, authorizeAdmin, async (req, res) => {
 // Update user role
 router.put('/:id/role', authenticate, authorizeAdmin, async (req, res) => {
     try {
-        const { role } = req.body;
+        const { role } = req.body
+        const { id } = req.params; // The ID of the user to update;
 
-        if (!['user', 'admin'].includes(role)) {
-            return res.status(400).json({ error: 'Invalid role' });
-        }
+        // if (!['user', 'admin'].includes(role)) {
+        //     return res.status(400).json({ error: 'Invalid role' });
+        // }
 
         const user = await User.findByPk(req.params.id);
 
@@ -33,14 +34,16 @@ router.put('/:id/role', authenticate, authorizeAdmin, async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        // Prevent demotion of head_admin
-        if (user.role === 'head_admin') {
-            return res.status(403).json({ error: 'Cannot demote the head admin' });
+        // Allow admins to demote themselves
+        if (req.user.id === parseInt(id) && role === 'user') {
+            await user.update({ role });
+            return res.json({ message: 'Role updated successfully (self-demotion)' });
         }
 
-        // Prevent demotion of self
-        if (user.id === req.user.id && req.user.role === 'admin') {
-            return res.status(403).json({ error: 'Admins cannot demote themselves' });
+        // Prevent demotion of the only admin in the system
+        const adminCount = await User.count({ where: { role: 'admin' } });
+        if (user.role === 'admin' && role === 'user' && adminCount === 1) {
+            return res.status(403).json({ error: 'Cannot demote the only admin' });
         }
 
         await user.update({ role });
