@@ -82,14 +82,10 @@ router.delete('/:id', authenticate, authorizeAdmin, async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        // Prevent deleting other admins or self
-        if (user.role === 'admin') {
-            return res.status(403).json({ error: 'Admins cannot delete other admins' });
-        }
-
-        if (user.id === req.user.id) {
-            return res.status(403).json({ error: 'You cannot delete your own account' });
-        }
+        // // Prevent deleting other admins or self
+        // if (user.role === 'admin') {
+        //     return res.status(403).json({ error: 'Admins cannot delete other admins' });
+        // }
 
         await user.destroy({ force: true }); // Hard delete the user
         res.json({ message: 'User deleted successfully' });
