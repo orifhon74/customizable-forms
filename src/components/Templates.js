@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function Templates() {
     const [templates, setTemplates] = useState([]);
     const [error, setError] = useState(null);
+    const navigate = useNavigate();
+
+    const handleFillOut = (templateId) => {
+        navigate(`/submit-form/${templateId}`);
+    };
 
     useEffect(() => {
         const fetchTemplates = async () => {
             try {
                 const token = localStorage.getItem('token');
-                if (!token) {
-                    throw new Error('No token found. Please log in.');
-                }
-
                 const response = await fetch('http://localhost:5001/api/templates', {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -19,14 +21,12 @@ function Templates() {
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+                    throw new Error('Failed to fetch templates');
                 }
 
                 const data = await response.json();
-                console.log('Fetched templates:', data); // Debug fetched templates
                 setTemplates(data);
             } catch (err) {
-                console.error('Error fetching templates:', err.message);
                 setError(err.message);
             }
         };
@@ -34,27 +34,18 @@ function Templates() {
         fetchTemplates();
     }, []);
 
-    if (error) {
-        return <div>Error: {error}</div>;
-    }
+    if (error) return <div>Error: {error}</div>;
 
     return (
         <div>
             <h1>Templates</h1>
-            {templates.length === 0 ? (
-                <p>No templates available.</p>
-            ) : (
-                <ul>
-                    {templates.map((template) => (
-                        <li key={template.id}>
-                            <strong>{template.title}</strong> - {template.description}{' '}
-                            {template.access_type === 'private' && (
-                                <span style={{ color: 'red' }}>(Private)</span>
-                            )}
-                        </li>
-                    ))}
-                </ul>
-            )}
+            {templates.map((template) => (
+                <div key={template.id}>
+                    <h3>{template.title}</h3>
+                    <p>{template.description}</p>
+                    <button onClick={() => handleFillOut(template.id)}>Fill Out</button>
+                </div>
+            ))}
         </div>
     );
 }

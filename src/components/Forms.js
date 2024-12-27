@@ -35,25 +35,24 @@ function Forms() {
     return (
         <div>
             <h1>Forms</h1>
-            {forms.length === 0 ? (
-                <p>No forms available.</p>
-            ) : (
-                <ul>
-                    {forms.map((form) => (
-                        <li key={form.id}>
-                            <p>
-                                <strong>Template:</strong> {form.Template?.title || 'N/A'}
-                            </p>
-                            <p>
-                                <strong>Submitted By:</strong> {form.User?.username || 'N/A'}
-                            </p>
-                            <p>
-                                <strong>Answer:</strong> {form.string1_answer || 'N/A'}
-                            </p>
-                        </li>
-                    ))}
-                </ul>
-            )}
+            <table>
+                <thead>
+                <tr>
+                    <th>Template</th>
+                    <th>Submitted By</th>
+                    <th>Date</th>
+                </tr>
+                </thead>
+                <tbody>
+                {forms.map((form) => (
+                    <tr key={form.id}>
+                        <td>{form.Template?.title || 'N/A'}</td>
+                        <td>{form.User?.username || 'N/A'}</td>
+                        <td>{new Date(form.createdAt).toLocaleDateString()}</td>
+                    </tr>
+                ))}
+                </tbody>
+            </table>
         </div>
     );
 }

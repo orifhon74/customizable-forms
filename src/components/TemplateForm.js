@@ -1,32 +1,33 @@
 import React, { useState } from 'react';
 
 function TemplateForm() {
+    const [questions, setQuestions] = useState({
+        stringQuestions: ['', '', '', ''],
+        intQuestions: ['', '', '', ''],
+        checkboxQuestions: ['', '', '', ''],
+    });
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [accessType, setAccessType] = useState('public');
-    const [topicId, setTopicId] = useState(1); // Default topic ID
+    const [accessType, setAccessType] = useState('public'); // Default to public
+    const [topic, setTopic] = useState(''); // Add topic state
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
 
+    const handleQuestionChange = (type, index, value) => {
+        setQuestions((prev) => ({
+            ...prev,
+            [type]: prev[type].map((q, i) => (i === index ? value : q)),
+        }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         const token = localStorage.getItem('token');
+
         if (!token) {
             setError('You must be logged in to create a template');
             return;
         }
-
-        const payload = {
-            title,
-            description,
-            access_type: accessType,
-            topic_id: topicId,
-            custom_string1_state: true,
-            custom_string1_question: 'What is your name?', // Hardcoded for testing
-        };
-
-        console.log('Submitting Template Payload:', payload); // Debug payload
 
         try {
             const response = await fetch('http://localhost:5001/api/templates', {
@@ -35,26 +36,30 @@ function TemplateForm() {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify(payload),
+                body: JSON.stringify({
+                    title,
+                    description,
+                    access_type: accessType,
+                    topic_id: topic, // Pass topic_id to backend
+                    ...questions,
+                }),
             });
 
-            if (!response.ok) {
-                throw new Error('Failed to create template');
-            }
+            if (!response.ok) throw new Error('Failed to create template');
 
             const data = await response.json();
             setSuccess('Template created successfully!');
-            setTitle('');
-            setDescription('');
-            setAccessType('public');
+
+            console.log('Template created successfully');
         } catch (err) {
-            setError(err.message);
+            console.error(err.message);
+            setError('Failed to create template');
         }
     };
 
     return (
         <div>
-            <h1>Create a Template</h1>
+            <h1>Create Template</h1>
             {error && <p style={{ color: 'red' }}>{error}</p>}
             {success && <p style={{ color: 'green' }}>{success}</p>}
             <form onSubmit={handleSubmit}>
@@ -85,14 +90,46 @@ function TemplateForm() {
                     </select>
                 </div>
                 <div>
-                    <label>Topic ID:</label>
-                    <input
-                        type="number"
-                        value={topicId}
-                        onChange={(e) => setTopicId(Number(e.target.value))}
+                    <label>Topic:</label>
+                    <select
+                        value={topic}
+                        onChange={(e) => setTopic(e.target.value)}
                         required
-                    />
+                    >
+                        <option value="">Select a topic</option>
+                        <option value="1">Education</option>
+                        <option value="2">Quiz</option>
+                        <option value="3">Other</option>
+                        {/* Add more topics as needed */}
+                    </select>
                 </div>
+                <h3>String Questions</h3>
+                {questions.stringQuestions.map((q, i) => (
+                    <input
+                        key={i}
+                        value={q}
+                        onChange={(e) => handleQuestionChange('stringQuestions', i, e.target.value)}
+                        placeholder={`Question ${i + 1}`}
+                    />
+                ))}
+                <h3>Integer Questions</h3>
+                {questions.intQuestions.map((q, i) => (
+                    <input
+                        key={i}
+                        value={q}
+                        onChange={(e) => handleQuestionChange('intQuestions', i, e.target.value)}
+                        placeholder={`Question ${i + 1}`}
+                    />
+                ))}
+                <h3>Checkbox Questions</h3>
+                {questions.checkboxQuestions.map((q, i) => (
+                    <input
+                        key={i}
+                        value={q}
+                        onChange={(e) => handleQuestionChange('checkboxQuestions', i, e.target.value)}
+                        placeholder={`Question ${i + 1}`}
+                    />
+                ))}
                 <button type="submit">Create Template</button>
             </form>
         </div>

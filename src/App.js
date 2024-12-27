@@ -9,6 +9,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import TemplateForm from './components/TemplateForm';
 import FormSubmission from './components/FormSubmission';
+import PublicTemplates from "./components/PublicTemplates";
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -62,6 +63,9 @@ function App() {
                                         </>
                                     )}
                                     <li className="nav-item">
+                                        <Link className="nav-link" to="/public-templates">Public Templates</Link>
+                                    </li>
+                                    <li className="nav-item">
                                         <Link className="nav-link" to="/templates">Templates</Link>
                                     </li>
                                     <li className="nav-item">
@@ -72,7 +76,8 @@ function App() {
                                     </li>
                                     <li className="nav-item">
                                         <Link className="nav-link" to="/submit-form/1">Submit Form</Link>
-                                    </li> {/* Replace `1` with dynamic template ID */}
+                                    </li>
+                                    {/* Replace `1` with dynamic template ID */}
                                     <li className="nav-item">
                                         <button className="btn btn-link nav-link" onClick={handleLogout}>Logout</button>
                                     </li>
@@ -98,6 +103,7 @@ function App() {
                         path="/templates"
                         element={isAuthenticated ? <Templates /> : <Navigate to="/login" />}
                     />
+                    <Route path="/public-templates" element={<PublicTemplates />} />
                     <Route
                         path="/forms"
                         element={isAuthenticated ? <Forms /> : <Navigate to="/login" />}

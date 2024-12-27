@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../db'); // Your database connection
-const Form = require('./Form');
 
 const Template = sequelize.define('Template', {
     title: { type: DataTypes.STRING, allowNull: false },
@@ -13,20 +12,18 @@ const Template = sequelize.define('Template', {
         defaultValue: 'public',
     },
     allowed_users: {
-        type: DataTypes.TEXT, // Change from JSON to TEXT
+        type: DataTypes.TEXT, // JSON array of allowed user IDs
         allowNull: true,
         get() {
-            // Parse the string into an array when retrieving
             const value = this.getDataValue('allowed_users');
             return value ? JSON.parse(value) : null;
         },
         set(value) {
-            // Convert the array into a string when storing
             this.setDataValue('allowed_users', value ? JSON.stringify(value) : null);
         },
     },
 
-    // String Questions
+    // Single-Line String Questions
     custom_string1_state: { type: DataTypes.BOOLEAN, defaultValue: false },
     custom_string1_question: { type: DataTypes.STRING, allowNull: true },
     custom_string2_state: { type: DataTypes.BOOLEAN, defaultValue: false },
