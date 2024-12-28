@@ -1,3 +1,4 @@
+// src/components/Forms.js
 import React, { useEffect, useState } from 'react';
 
 function Forms() {
@@ -10,13 +11,12 @@ function Forms() {
             try {
                 const token = localStorage.getItem('token');
                 if (!token) throw new Error('No token found. Please log in.');
-
                 const response = await fetch('http://localhost:5001/api/forms', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-
-                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
                 const data = await response.json();
                 setForms(data);
             } catch (err) {
@@ -25,15 +25,14 @@ function Forms() {
                 setLoading(false);
             }
         };
-
         fetchForms();
     }, []);
 
     if (loading) return <h2>Loading...</h2>;
-    if (error) return <h2>Error: {error}</h2>;
+    if (error) return <h2 style={{ color: 'red' }}>Error: {error}</h2>;
 
     return (
-        <div>
+        <div style={{ margin: '20px' }}>
             <h1>Forms</h1>
             <table>
                 <thead>

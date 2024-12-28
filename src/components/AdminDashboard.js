@@ -1,9 +1,10 @@
+// src/components/AdminDashboard.js
 import React from 'react';
 import { Link } from 'react-router-dom';
 
 function AdminDashboard() {
     return (
-        <div>
+        <div style={{ margin: '20px' }}>
             <h1>Admin Dashboard</h1>
             <ul>
                 <li>

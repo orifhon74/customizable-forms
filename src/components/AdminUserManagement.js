@@ -1,3 +1,4 @@
+// src/components/AdminUserManagement.js
 import React, { useEffect, useState } from 'react';
 
 function AdminUserManagement() {
@@ -51,14 +52,10 @@ function AdminUserManagement() {
                 method: 'PUT',
                 headers: { Authorization: `Bearer ${token}` },
             });
-
             if (!response.ok) {
                 throw new Error('Failed to block/unblock user');
             }
-
-            const data = await response.json();
-            console.log(data.message); // Debugging
-            fetchUsers(); // Refresh user list after blocking/unblocking
+            fetchUsers();
         } catch (err) {
             console.error(err.message);
         }
@@ -80,94 +77,10 @@ function AdminUserManagement() {
         }
     };
 
-    // const fetchUsers = async () => {
-    //     const token = localStorage.getItem('token');
-    //     if (!token) {
-    //         setError('You must be logged in as admin');
-    //         return;
-    //     }
-    //
-    //     try {
-    //         const response = await fetch('http://localhost:5001/api/users', {
-    //             headers: { Authorization: `Bearer ${token}` },
-    //         });
-    //
-    //         if (!response.ok) {
-    //             throw new Error('Failed to fetch users');
-    //         }
-    //
-    //         const data = await response.json();
-    //         setUsers(data);
-    //     } catch (err) {
-    //         setError(err.message);
-    //     }
-    // };
-    //
-    // const updateUserRole = async (userId, newRole) => {
-    //     const token = localStorage.getItem('token');
-    //     try {
-    //         const response = await fetch(`http://localhost:5001/api/users/${userId}/role`, {
-    //             method: 'PUT',
-    //             headers: {
-    //                 'Content-Type': 'application/json',
-    //                 Authorization: `Bearer ${token}`,
-    //             },
-    //             body: JSON.stringify({ role: newRole }),
-    //         });
-    //
-    //         if (!response.ok) {
-    //             throw new Error('Failed to update role');
-    //         }
-    //
-    //         fetchUsers(); // Refresh user list
-    //     } catch (err) {
-    //         console.error(err.message);
-    //         setError('Failed to update role');
-    //     }
-    // };
-    //
-    // const toggleBlockUser = async (userId) => {
-    //     const token = localStorage.getItem('token');
-    //     try {
-    //         const response = await fetch(`http://localhost:5001/api/users/${userId}/block`, {
-    //             method: 'PUT',
-    //             headers: { Authorization: `Bearer ${token}` },
-    //         });
-    //
-    //         if (!response.ok) {
-    //             throw new Error('Failed to block/unblock user');
-    //         }
-    //
-    //         fetchUsers(); // Refresh user list
-    //     } catch (err) {
-    //         console.error(err.message);
-    //         setError('Failed to block/unblock user');
-    //     }
-    // };
-    //
-    // const deleteUser = async (userId) => {
-    //     const token = localStorage.getItem('token');
-    //     try {
-    //         const response = await fetch(`http://localhost:5001/api/users/${userId}`, {
-    //             method: 'DELETE',
-    //             headers: { Authorization: `Bearer ${token}` },
-    //         });
-    //
-    //         if (!response.ok) {
-    //             throw new Error('Failed to delete user');
-    //         }
-    //
-    //         fetchUsers(); // Refresh user list
-    //     } catch (err) {
-    //         console.error(err.message);
-    //         setError('Failed to delete user');
-    //     }
-    // };
-
     if (error) return <div>Error: {error}</div>;
 
     return (
-        <div>
+        <div style={{ margin: '20px' }}>
             <h1>Admin User Management</h1>
             <table>
                 <thead>

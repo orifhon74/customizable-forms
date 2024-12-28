@@ -1,3 +1,4 @@
+// src/components/UserDashboard.js
 import React, { useState, useEffect } from 'react';
 
 function UserDashboard() {
@@ -13,11 +14,7 @@ function UserDashboard() {
                 const response = await fetch('http://localhost:5001/api/templates', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-
-                if (!response.ok) {
-                    throw new Error('Failed to fetch templates');
-                }
-
+                if (!response.ok) throw new Error('Failed to fetch templates');
                 const data = await response.json();
                 setTemplates(data);
             } catch (err) {
@@ -30,11 +27,7 @@ function UserDashboard() {
                 const response = await fetch('http://localhost:5001/api/forms', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-
-                if (!response.ok) {
-                    throw new Error('Failed to fetch forms');
-                }
-
+                if (!response.ok) throw new Error('Failed to fetch forms');
                 const data = await response.json();
                 setForms(data);
             } catch (err) {
@@ -47,9 +40,10 @@ function UserDashboard() {
     }, []);
 
     return (
-        <div>
+        <div style={{ margin: '20px' }}>
             <h1>User Dashboard</h1>
             {error && <p style={{ color: 'red' }}>{error}</p>}
+
             <h2>Your Templates</h2>
             <ul>
                 {templates.map((template) => (

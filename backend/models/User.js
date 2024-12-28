@@ -1,3 +1,4 @@
+// models/User.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../db');
 
@@ -22,7 +23,7 @@ const User = sequelize.define('User', {
     },
 }, {
     timestamps: true,
-    paranoid: true,
+    paranoid: true, // enables soft deletes
 });
 
 module.exports = User;

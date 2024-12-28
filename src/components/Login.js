@@ -1,3 +1,4 @@
+// src/components/Login.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,18 +10,15 @@ function Login({ setIsAuthenticated, setUserRole }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         try {
             const response = await fetch('http://localhost:5001/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
             });
-
             if (!response.ok) {
                 throw new Error('Invalid credentials');
             }
-
             const data = await response.json();
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
@@ -34,17 +32,27 @@ function Login({ setIsAuthenticated, setUserRole }) {
     };
 
     return (
-        <div>
+        <div style={{ margin: '20px' }}>
             <h1>Login</h1>
             {error && <p style={{ color: 'red' }}>{error}</p>}
             <form onSubmit={handleSubmit}>
                 <div>
                     <label>Email:</label>
-                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                    <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                    />
                 </div>
                 <div>
                     <label>Password:</label>
-                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                    />
                 </div>
                 <button type="submit">Login</button>
             </form>
@@ -53,60 +61,3 @@ function Login({ setIsAuthenticated, setUserRole }) {
 }
 
 export default Login;
-
-
-// import React, { useState } from 'react';
-// import { useNavigate } from 'react-router-dom';
-//
-// function Login({ setIsAuthenticated, setUserRole }) {
-//     const [email, setEmail] = useState('');
-//     const [password, setPassword] = useState('');
-//     const [error, setError] = useState(null);
-//     const navigate = useNavigate();
-//
-//     const handleSubmit = async (e) => {
-//         e.preventDefault();
-//
-//         try {
-//             const response = await fetch('http://localhost:5001/api/auth/login', {
-//                 method: 'POST',
-//                 headers: { 'Content-Type': 'application/json' },
-//                 body: JSON.stringify({ email, password }),
-//             });
-//
-//             if (!response.ok) {
-//                 throw new Error('Invalid credentials');
-//             }
-//
-//             const data = await response.json();
-//             localStorage.setItem('token', data.token);
-//             localStorage.setItem('user', JSON.stringify(data.user));
-//             setIsAuthenticated(true);
-//             setUserRole(data.user.role);
-//
-//             navigate('/dashboard'); // Redirect based on role
-//         } catch (err) {
-//             setError(err.message);
-//         }
-//     };
-//
-//     return (
-//         <div>
-//             <h1>Login</h1>
-//             {error && <p style={{ color: 'red' }}>{error}</p>}
-//             <form onSubmit={handleSubmit}>
-//                 <div>
-//                     <label>Email:</label>
-//                     <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-//                 </div>
-//                 <div>
-//                     <label>Password:</label>
-//                     <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-//                 </div>
-//                 <button type="submit">Login</button>
-//             </form>
-//         </div>
-//     );
-// }
-//
-// export default Login;

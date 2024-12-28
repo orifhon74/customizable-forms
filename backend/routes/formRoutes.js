@@ -1,174 +1,205 @@
-    const express = require('express');
-    const router = express.Router();
-    const Form = require('../models/Form');
-    const Template = require('../models/Template');
-    const authenticate = require('../middleware/authenticate');
-    const {User} = require("../models");
+// routes/formRoutes.js
+const express = require('express');
+const router = express.Router();
+const { Op } = require('sequelize');
 
-    // Fetch all forms (specific to user)
-    // router.get('/', authenticate, async (req, res) => {
-    //     try {
-    //         const forms = await Form.findAll({
-    //             where: { user_id: req.user.id },
-    //             include: [
-    //                 { model: Template, attributes: ['id', 'title'] },
-    //                 { model: User, attributes: ['id', 'username', 'email'] },
-    //             ],
-    //         });
-    //         res.json(forms);
-    //     } catch (err) {
-    //         console.error('Error fetching forms:', err);
-    //         res.status(500).json({ error: 'Failed to fetch forms' });
-    //     }
-    // });
+const Form = require('../models/Form');
+const Template = require('../models/Template');
+const { User } = require('../models');
+const authenticate = require('../middleware/authenticate');
 
-    router.get('/', authenticate, async (req, res) => {
-        try {
-            const forms = await Form.findAll({
-                where: { user_id: req.user.id },
-                include: [
-                    { model: Template, attributes: ['id', 'title'] },
-                    { model: User, attributes: ['id', 'username', 'email'] }, // Include user details
-                ],
-            });
-            res.json(forms);
-        } catch (err) {
-            console.error('Error fetching forms:', err);
-            res.status(500).json({ error: 'Failed to fetch forms' });
+/**
+ * GET /api/forms
+ * - Auth required: fetch all forms for the logged-in user
+ */
+router.get('/', authenticate, async (req, res) => {
+    try {
+        const forms = await Form.findAll({
+            where: { user_id: req.user.id },
+            include: [
+                { model: Template, attributes: ['id', 'title'] },
+                { model: User, attributes: ['id', 'username', 'email'] },
+            ],
+        });
+        res.json(forms);
+    } catch (err) {
+        console.error('Error fetching forms:', err);
+        res.status(500).json({ error: 'Failed to fetch forms' });
+    }
+});
+
+/**
+ * GET /api/forms/:id
+ * - Auth required: must be the form owner or admin
+ */
+router.get('/:id', authenticate, async (req, res) => {
+    try {
+        const form = await Form.findByPk(req.params.id, {
+            include: [{ model: Template }, { model: User }],
+        });
+        if (!form) {
+            return res.status(404).json({ error: 'Form not found' });
         }
-    });
 
-    // Get a specific form
-    router.get('/:id', authenticate, async (req, res) => {
-        try {
-            const form = await Form.findByPk(req.params.id, {
-                include: [{ model: Template, as: 'Template' }],
-            });
-
-            if (!form) {
-                return res.status(404).json({ error: 'Form not found' });
-            }
-
-            // Only allow access if the user owns the form or is an admin
-            if (form.user_id !== req.user.id && req.user.role !== 'admin') {
-                return res.status(403).json({ error: 'Access denied' });
-            }
-
-            res.json(form);
-        } catch (err) {
-            console.error('Error fetching form:', err);
-            res.status(500).json({ error: 'Failed to fetch form' });
+        if (form.user_id !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Access denied' });
         }
-    });
 
-    router.post('/:templateId/submit', authenticate, async (req, res) => {
-        try {
-            const { templateId } = req.params;
-            const template = await Template.findByPk(templateId);
+        return res.json(form);
+    } catch (err) {
+        console.error('Error fetching form:', err);
+        res.status(500).json({ error: 'Failed to fetch form' });
+    }
+});
 
-            if (!template) {
-                return res.status(404).json({ error: 'Template not found' });
-            }
-
-            const {
-                string1_answer,
-                string2_answer,
-                string3_answer,
-                string4_answer,
-                multiline1_answer,
-                multiline2_answer,
-                multiline3_answer,
-                multiline4_answer,
-                int1_answer,
-                int2_answer,
-                int3_answer,
-                int4_answer,
-                checkbox1_answer = false,
-                checkbox2_answer = false,
-                checkbox3_answer = false,
-                checkbox4_answer = false,
-            } = req.body;
-
-            // Validate answers based on template structure
-            if (template.custom_string1_state && (!string1_answer || typeof string1_answer !== 'string')) {
-                return res.status(400).json({ error: 'Invalid or missing string1_answer' });
-            }
-            if (template.custom_string2_state && (!string2_answer || typeof string2_answer !== 'string')) {
-                return res.status(400).json({ error: 'Invalid or missing string2_answer' });
-            }
-            if (template.custom_string3_state && (!string3_answer || typeof string3_answer !== 'string')) {
-                return res.status(400).json({ error: 'Invalid or missing string3_answer' });
-            }
-            if (template.custom_string4_state && (!string4_answer || typeof string4_answer !== 'string')) {
-                return res.status(400).json({ error: 'Invalid or missing string4_answer' });
-            }
-
-            if (template.custom_multiline1_state && (!multiline1_answer || typeof multiline1_answer !== 'string')) {
-                return res.status(400).json({ error: 'Invalid or missing multiline1_answer' });
-            }
-            if (template.custom_multiline2_state && (!multiline2_answer || typeof multiline2_answer !== 'string')) {
-                return res.status(400).json({ error: 'Invalid or missing multiline2_answer' });
-            }
-            if (template.custom_multiline3_state && (!multiline3_answer || typeof multiline3_answer !== 'string')) {
-                return res.status(400).json({ error: 'Invalid or missing multiline3_answer' });
-            }
-            if (template.custom_multiline4_state && (!multiline4_answer || typeof multiline4_answer !== 'string')) {
-                return res.status(400).json({ error: 'Invalid or missing multiline4_answer' });
-            }
-
-            if (template.custom_int1_state && (isNaN(int1_answer) || int1_answer === null)) {
-                return res.status(400).json({ error: 'Invalid or missing int1_answer' });
-            }
-            if (template.custom_int2_state && (isNaN(int2_answer) || int2_answer === null)) {
-                return res.status(400).json({ error: 'Invalid or missing int2_answer' });
-            }
-            if (template.custom_int3_state && (isNaN(int3_answer) || int3_answer === null)) {
-                return res.status(400).json({ error: 'Invalid or missing int3_answer' });
-            }
-            if (template.custom_int4_state && (isNaN(int4_answer) || int4_answer === null)) {
-                return res.status(400).json({ error: 'Invalid or missing int4_answer' });
-            }
-
-            if (template.custom_checkbox1_state && typeof checkbox1_answer !== 'boolean') {
-                return res.status(400).json({ error: 'Invalid checkbox1_answer' });
-            }
-            if (template.custom_checkbox2_state && typeof checkbox2_answer !== 'boolean') {
-                return res.status(400).json({ error: 'Invalid checkbox2_answer' });
-            }
-            if (template.custom_checkbox3_state && typeof checkbox3_answer !== 'boolean') {
-                return res.status(400).json({ error: 'Invalid checkbox3_answer' });
-            }
-            if (template.custom_checkbox4_state && typeof checkbox4_answer !== 'boolean') {
-                return res.status(400).json({ error: 'Invalid checkbox4_answer' });
-            }
-
-            // Create the form with all provided answers
-            const form = await Form.create({
-                template_id: templateId,
-                user_id: req.user.id,
-                string1_answer: string1_answer || null,
-                string2_answer: string2_answer || null,
-                string3_answer: string3_answer || null,
-                string4_answer: string4_answer || null,
-                multiline1_answer: multiline1_answer || null,
-                multiline2_answer: multiline2_answer || null,
-                multiline3_answer: multiline3_answer || null,
-                multiline4_answer: multiline4_answer || null,
-                int1_answer: int1_answer || null,
-                int2_answer: int2_answer || null,
-                int3_answer: int3_answer || null,
-                int4_answer: int4_answer || null,
-                checkbox1_answer,
-                checkbox2_answer,
-                checkbox3_answer,
-                checkbox4_answer,
-            });
-
-            res.status(201).json({ message: 'Form submitted successfully', form });
-        } catch (err) {
-            console.error('Error submitting form:', err);
-            res.status(500).json({ error: 'Failed to submit form' });
+/**
+ * POST /api/forms/:templateId/submit
+ * - Auth required: submit a new form for a given template
+ */
+router.post('/:templateId/submit', authenticate, async (req, res) => {
+    try {
+        const { templateId } = req.params;
+        const template = await Template.findByPk(templateId);
+        if (!template) {
+            return res.status(404).json({ error: 'Template not found' });
         }
-    });
 
-    module.exports = router;
+        // If the template is private, only owner or admin can fill (adjust if you want others)
+        if (
+            template.access_type !== 'public' &&
+            template.user_id !== req.user.id &&
+            req.user.role !== 'admin'
+        ) {
+            return res.status(403).json({ error: 'Access denied: Template is private' });
+        }
+
+        // Destructure answers from req.body
+        const {
+            custom_string1_answer,
+            custom_string2_answer,
+            custom_string3_answer,
+            custom_string4_answer,
+            custom_multiline1_answer,
+            custom_multiline2_answer,
+            custom_multiline3_answer,
+            custom_multiline4_answer,
+            custom_int1_answer,
+            custom_int2_answer,
+            custom_int3_answer,
+            custom_int4_answer,
+            custom_checkbox1_answer = false,
+            custom_checkbox2_answer = false,
+            custom_checkbox3_answer = false,
+            custom_checkbox4_answer = false,
+        } = req.body;
+
+        // Basic validation if needed (only if the template state is set)
+        // e.g. if (template.custom_string1_state && !custom_string1_answer)...
+
+        const form = await Form.create({
+            template_id: templateId,
+            user_id: req.user.id,
+
+            custom_string1_answer: custom_string1_answer || null,
+            custom_string2_answer: custom_string2_answer || null,
+            custom_string3_answer: custom_string3_answer || null,
+            custom_string4_answer: custom_string4_answer || null,
+
+            custom_multiline1_answer: custom_multiline1_answer || null,
+            custom_multiline2_answer: custom_multiline2_answer || null,
+            custom_multiline3_answer: custom_multiline3_answer || null,
+            custom_multiline4_answer: custom_multiline4_answer || null,
+
+            custom_int1_answer: custom_int1_answer || null,
+            custom_int2_answer: custom_int2_answer || null,
+            custom_int3_answer: custom_int3_answer || null,
+            custom_int4_answer: custom_int4_answer || null,
+
+            custom_checkbox1_answer,
+            custom_checkbox2_answer,
+            custom_checkbox3_answer,
+            custom_checkbox4_answer,
+        });
+
+        res.status(201).json({ message: 'Form submitted successfully', form });
+    } catch (err) {
+        console.error('Error submitting form:', err);
+        res.status(500).json({ error: 'Failed to submit form' });
+    }
+});
+
+/**
+ * GET /api/forms/template/:templateId
+ * - Auth required: get all forms for a specific template (admin or template owner only)
+ */
+router.get('/template/:templateId', authenticate, async (req, res) => {
+    try {
+        const { templateId } = req.params;
+        const template = await Template.findByPk(templateId);
+        if (!template) {
+            return res.status(404).json({ error: 'Template not found' });
+        }
+
+        if (req.user.role !== 'admin' && req.user.id !== template.user_id) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+
+        const forms = await Form.findAll({ where: { template_id: templateId } });
+        res.json(forms);
+    } catch (err) {
+        console.error('Error fetching forms:', err);
+        res.status(500).json({ error: 'Failed to fetch forms' });
+    }
+});
+
+/**
+ * PUT /api/forms/:id
+ * - Auth required: only admin or template owner
+ */
+router.put('/:id', authenticate, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const form = await Form.findByPk(id);
+        if (!form) {
+            return res.status(404).json({ error: 'Form not found' });
+        }
+
+        const template = await Template.findByPk(form.template_id);
+        if (req.user.role !== 'admin' && req.user.id !== template.user_id) {
+            return res.status(403).json({ error: 'Unauthorized to edit this form' });
+        }
+
+        await form.update(req.body);
+        res.json({ message: 'Form updated successfully', form });
+    } catch (err) {
+        console.error('Error updating form:', err);
+        res.status(500).json({ error: 'Failed to update form' });
+    }
+});
+
+/**
+ * DELETE /api/forms/:id
+ * - Auth required: only admin or template owner
+ */
+router.delete('/:id', authenticate, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const form = await Form.findByPk(id);
+        if (!form) {
+            return res.status(404).json({ error: 'Form not found' });
+        }
+
+        const template = await Template.findByPk(form.template_id);
+        if (req.user.role !== 'admin' && req.user.id !== template.user_id) {
+            return res.status(403).json({ error: 'Unauthorized to delete this form' });
+        }
+
+        await form.destroy();
+        res.json({ message: 'Form deleted successfully' });
+    } catch (err) {
+        console.error('Error deleting form:', err);
+        res.status(500).json({ error: 'Failed to delete form' });
+    }
+});
+
+module.exports = router;

@@ -1,25 +1,22 @@
+// routes/authRoutes.js
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 require('dotenv').config();
 
 const router = express.Router();
 
 /**
- * POST /api/register - Register a new user
+ * POST /api/register
+ * Register a new user
  */
 router.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
-
     try {
-        console.log('Register request received:', req.body); // Log request body
-
         // Check if user already exists
         const existingUser = await User.findOne({ where: { email } });
         if (existingUser) {
-            console.log('User already exists:', email);
             return res.status(400).json({ error: 'User already exists' });
         }
 
@@ -32,10 +29,8 @@ router.post('/register', async (req, res) => {
             username,
             email,
             password: hashedPassword,
-            role: 'user', // Default role
+            role: 'user',
         });
-
-        console.log('User registered successfully:', newUser); // Log new user
 
         res.status(201).json({
             message: 'User registered successfully',
@@ -46,25 +41,24 @@ router.post('/register', async (req, res) => {
             },
         });
     } catch (err) {
-        console.error('Error during registration:', err.message); // Log error details
+        console.error('Error during registration:', err.message);
         res.status(500).json({ error: 'Failed to register', details: err.message });
     }
 });
 
 /**
- * POST /api/login - Authenticate user and return a JWT
+ * POST /api/login
+ * Authenticate user and return a JWT
  */
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
-
     try {
-        const user = await User.findOne({ where: { email } });
-
+        const user = await User.findOne({ where: { email }, paranoid: false });
         if (!user) {
             return res.status(404).json({ error: 'Invalid credentials' });
         }
 
-        // Check if user is blocked (soft deleted)
+        // Check if user is blocked (soft deleted => user.deletedAt !== null)
         if (user.deletedAt) {
             return res.status(403).json({ error: 'User is blocked. Please contact the admin.' });
         }
@@ -74,6 +68,7 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        // Generate token
         const token = jwt.sign(
             { id: user.id, role: user.role },
             process.env.JWT_SECRET,

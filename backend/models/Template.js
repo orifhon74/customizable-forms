@@ -1,5 +1,6 @@
+// models/Template.js
 const { DataTypes } = require('sequelize');
-const sequelize = require('../db'); // Your database connection
+const sequelize = require('../db');
 
 const Template = sequelize.define('Template', {
     title: { type: DataTypes.STRING, allowNull: false },
@@ -15,11 +16,11 @@ const Template = sequelize.define('Template', {
         type: DataTypes.TEXT, // JSON array of allowed user IDs
         allowNull: true,
         get() {
-            const value = this.getDataValue('allowed_users');
-            return value ? JSON.parse(value) : null;
+            const val = this.getDataValue('allowed_users');
+            return val ? JSON.parse(val) : null;
         },
-        set(value) {
-            this.setDataValue('allowed_users', value ? JSON.stringify(value) : null);
+        set(val) {
+            this.setDataValue('allowed_users', val ? JSON.stringify(val) : null);
         },
     },
 
