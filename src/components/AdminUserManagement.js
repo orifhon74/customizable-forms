@@ -1,23 +1,22 @@
-// src/components/AdminUserManagement.js
 import React, { useEffect, useState } from 'react';
+import { Table, Button, Alert } from 'react-bootstrap';
 
 function AdminUserManagement() {
     const [users, setUsers] = useState([]);
     const [error, setError] = useState(null);
+
+    const token = localStorage.getItem('token');
 
     useEffect(() => {
         fetchUsers();
     }, []);
 
     const fetchUsers = async () => {
-        const token = localStorage.getItem('token');
         try {
             const response = await fetch('http://localhost:5001/api/users', {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            if (!response.ok) {
-                throw new Error('Failed to fetch users');
-            }
+            if (!response.ok) throw new Error('Failed to fetch users');
             const data = await response.json();
             setUsers(data);
         } catch (err) {
@@ -26,7 +25,6 @@ function AdminUserManagement() {
     };
 
     const updateUserRole = async (userId, newRole) => {
-        const token = localStorage.getItem('token');
         try {
             const response = await fetch(`http://localhost:5001/api/users/${userId}/role`, {
                 method: 'PUT',
@@ -36,9 +34,7 @@ function AdminUserManagement() {
                 },
                 body: JSON.stringify({ role: newRole }),
             });
-            if (!response.ok) {
-                throw new Error('Failed to update role');
-            }
+            if (!response.ok) throw new Error('Failed to update role');
             fetchUsers();
         } catch (err) {
             setError(err.message);
@@ -46,74 +42,83 @@ function AdminUserManagement() {
     };
 
     const toggleBlockUser = async (userId) => {
-        const token = localStorage.getItem('token');
         try {
             const response = await fetch(`http://localhost:5001/api/users/${userId}/block`, {
                 method: 'PUT',
                 headers: { Authorization: `Bearer ${token}` },
             });
-            if (!response.ok) {
-                throw new Error('Failed to block/unblock user');
-            }
-            fetchUsers();
-        } catch (err) {
-            console.error(err.message);
-        }
-    };
-
-    const deleteUser = async (userId) => {
-        const token = localStorage.getItem('token');
-        try {
-            const response = await fetch(`http://localhost:5001/api/users/${userId}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!response.ok) {
-                throw new Error('Failed to delete user');
-            }
+            if (!response.ok) throw new Error('Failed to block/unblock user');
             fetchUsers();
         } catch (err) {
             setError(err.message);
         }
     };
 
-    if (error) return <div>Error: {error}</div>;
+    const deleteUser = async (userId) => {
+        try {
+            const response = await fetch(`http://localhost:5001/api/users/${userId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!response.ok) throw new Error('Failed to delete user');
+            fetchUsers();
+        } catch (err) {
+            setError(err.message);
+        }
+    };
 
     return (
-        <div style={{ margin: '20px' }}>
-            <h1>Admin User Management</h1>
-            <table>
+        <div className="mt-3">
+            <h1>User Management</h1>
+            {error && <Alert variant="danger">{error}</Alert>}
+            <Table striped bordered hover responsive className="mt-3">
                 <thead>
                 <tr>
                     <th>ID</th>
                     <th>Username</th>
                     <th>Email</th>
                     <th>Role</th>
-                    <th>Status</th>
+                    <th>Status (Blocked?)</th>
                     <th>Actions</th>
                 </tr>
                 </thead>
                 <tbody>
-                {users.map((user) => (
-                    <tr key={user.id}>
-                        <td>{user.id}</td>
-                        <td>{user.username}</td>
-                        <td>{user.email}</td>
-                        <td>{user.role}</td>
-                        <td>{user.deletedAt ? 'Blocked' : 'Active'}</td>
+                {users.map((u) => (
+                    <tr key={u.id}>
+                        <td>{u.id}</td>
+                        <td>{u.username}</td>
+                        <td>{u.email}</td>
+                        <td>{u.role}</td>
+                        <td>{u.deletedAt ? 'Blocked' : 'Active'}</td>
                         <td>
-                            <button onClick={() => updateUserRole(user.id, user.role === 'admin' ? 'user' : 'admin')}>
-                                {user.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
-                            </button>
-                            <button onClick={() => toggleBlockUser(user.id)}>
-                                {user.deletedAt ? 'Unblock' : 'Block'}
-                            </button>
-                            <button onClick={() => deleteUser(user.id)}>Delete</button>
+                            <Button
+                                variant="info"
+                                size="sm"
+                                onClick={() => updateUserRole(u.id, u.role === 'admin' ? 'user' : 'admin')}
+                                className="me-2"
+                            >
+                                {u.role === 'admin' ? 'Demote' : 'Promote'}
+                            </Button>
+                            <Button
+                                variant={u.deletedAt ? 'success' : 'warning'}
+                                size="sm"
+                                onClick={() => toggleBlockUser(u.id)}
+                                className="me-2"
+                            >
+                                {u.deletedAt ? 'Unblock' : 'Block'}
+                            </Button>
+                            <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => deleteUser(u.id)}
+                            >
+                                Delete
+                            </Button>
                         </td>
                     </tr>
                 ))}
                 </tbody>
-            </table>
+            </Table>
         </div>
     );
 }

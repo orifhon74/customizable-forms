@@ -1,36 +1,45 @@
-// src/components/TemplateForm.js
+// TemplateForm.js
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Form, Button, Row, Col, Alert, Badge } from 'react-bootstrap';
+import { storage } from '../firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 function TemplateForm() {
     const location = useLocation();
     const navigate = useNavigate();
     const queryParams = new URLSearchParams(location.search);
-
     const isEditMode = queryParams.get('edit') === 'true';
     const templateId = queryParams.get('templateId');
 
+    const token = localStorage.getItem('token');
+
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [accessType, setAccessType] = useState('public');
-    const [topicId, setTopicId] = useState(''); // must be an integer in your DB, but we'll store as string here
+    const [imageUrl, setImageUrl] = useState('');
+    const [uploadProgress, setUploadProgress] = useState(0);
 
-    // Arrays to store up to 4 question strings for each type
+    const topics = ["Education", "Quiz", "Other"];
+    const [topic, setTopic] = useState("Education");
+
+    const [accessType, setAccessType] = useState('public');
+
+    // question arrays
     const [stringQuestions, setStringQuestions] = useState(['', '', '', '']);
     const [multilineQuestions, setMultilineQuestions] = useState(['', '', '', '']);
-    const [intQuestions, setIntQuestions] = useState(['', '', '', '']); // user enters question text as a string
+    const [intQuestions, setIntQuestions] = useState(['', '', '', '']);
     const [checkboxQuestions, setCheckboxQuestions] = useState(['', '', '', '']);
 
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
 
-    // --------------------------------------------
-    // Fetch existing template if editing
-    // --------------------------------------------
     useEffect(() => {
+        if (!token) {
+            navigate('/sign-in');
+            return;
+        }
         if (isEditMode && templateId) {
             const fetchTemplate = async () => {
-                const token = localStorage.getItem('token');
                 try {
                     const resp = await fetch(`http://localhost:5001/api/templates/${templateId}`, {
                         headers: { Authorization: `Bearer ${token}` },
@@ -38,11 +47,11 @@ function TemplateForm() {
                     if (!resp.ok) throw new Error('Failed to fetch template for editing');
                     const data = await resp.json();
 
-                    // Populate the form fields
                     setTitle(data.title || '');
                     setDescription(data.description || '');
+                    setImageUrl(data.image_url || '');
+                    setTopic(data.topic || 'Education');
                     setAccessType(data.access_type || 'public');
-                    setTopicId(String(data.topic_id) || '');
 
                     setStringQuestions([
                         data.custom_string1_question || '',
@@ -74,37 +83,48 @@ function TemplateForm() {
             };
             fetchTemplate();
         }
-    }, [isEditMode, templateId]);
+    }, [isEditMode, templateId, token, navigate]);
 
-    // --------------------------------------------
-    // Handle form submission for create/update
-    // --------------------------------------------
+    const handleImageUpload = (file) => {
+        if (!file) return;
+        const storageRef = ref(storage, `template-images/${Date.now()}-${file.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setUploadProgress(progress);
+            },
+            (err) => {
+                setError(`Firebase upload error: ${err.message}`);
+            },
+            async () => {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                setImageUrl(downloadURL);
+            }
+        );
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
         setSuccess(null);
 
-        const token = localStorage.getItem('token');
-        if (!token) {
-            setError('You must be logged in to create or edit a template');
-            return;
-        }
-
-        // Decide POST or PUT based on edit mode
         const url = isEditMode
             ? `http://localhost:5001/api/templates/${templateId}`
             : 'http://localhost:5001/api/templates';
         const method = isEditMode ? 'PUT' : 'POST';
 
-        // The back end expects arrays for questions
-        const requestBody = {
+        const bodyData = {
             title,
             description,
+            image_url: imageUrl,
+            topic,
             access_type: accessType,
-            topic_id: parseInt(topicId, 10) || 0,
             stringQuestions,
             multilineQuestions,
-            intQuestions,      // Our user enters the question text as a string
+            intQuestions,
             checkboxQuestions,
         };
 
@@ -115,12 +135,12 @@ function TemplateForm() {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify(requestBody),
+                body: JSON.stringify(bodyData),
             });
             if (!resp.ok) {
-                throw new Error(`Failed to ${isEditMode ? 'update' : 'create'} template`);
+                const data = await resp.json().catch(() => null);
+                throw new Error(data?.error || 'Failed to save template');
             }
-
             setSuccess(`Template ${isEditMode ? 'updated' : 'created'} successfully!`);
             navigate('/templates');
         } catch (err) {
@@ -128,126 +148,141 @@ function TemplateForm() {
         }
     };
 
-    // --------------------------------------------
-    // Render
-    // --------------------------------------------
     return (
-        <div style={{ margin: '20px' }}>
+        <div style={{ maxWidth: '700px', margin: '40px auto' }}>
             <h1>{isEditMode ? 'Edit Template' : 'Create Template'}</h1>
+            {error && <Alert variant="danger">{error}</Alert>}
+            {success && <Alert variant="success">{success}</Alert>}
 
-            {error && <p style={{ color: 'red' }}>{error}</p>}
-            {success && <p style={{ color: 'green' }}>{success}</p>}
+            <Form onSubmit={handleSubmit}>
+                <Row>
+                    <Col md={6}>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Title</Form.Label>
+                            <Form.Control
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                required
+                            />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Description</Form.Label>
+                            <Form.Control
+                                as="textarea"
+                                rows={3}
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                            />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Topic</Form.Label>
+                            <Form.Select
+                                value={topic}
+                                onChange={(e) => setTopic(e.target.value)}
+                            >
+                                {topics.map((tp) => (
+                                    <option key={tp} value={tp}>{tp}</option>
+                                ))}
+                            </Form.Select>
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Access Type</Form.Label>
+                            <Form.Select
+                                value={accessType}
+                                onChange={(e) => setAccessType(e.target.value)}
+                            >
+                                <option value="public">Public</option>
+                                <option value="private">Private</option>
+                            </Form.Select>
+                        </Form.Group>
+                    </Col>
 
-            <form onSubmit={handleSubmit}>
-                {/* Basic Template Fields */}
-                <div>
-                    <label>Title:</label>
-                    <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        required
-                    />
-                </div>
-
-                <div>
-                    <label>Description:</label>
-                    <textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                    />
-                </div>
-
-                <div>
-                    <label>Access Type:</label>
-                    <select value={accessType} onChange={(e) => setAccessType(e.target.value)}>
-                        <option value="public">Public</option>
-                        <option value="private">Private</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label>Topic ID:</label>
-                    <input
-                        type="number"
-                        value={topicId}
-                        onChange={(e) => setTopicId(e.target.value)}
-                    />
-                </div>
+                    <Col md={6}>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Image</Form.Label>
+                            <Form.Control
+                                type="file"
+                                onChange={(e) => handleImageUpload(e.target.files[0])}
+                            />
+                            {uploadProgress > 0 && uploadProgress < 100 && (
+                                <div>Uploading: {Math.round(uploadProgress)}%</div>
+                            )}
+                            {imageUrl && (
+                                <div className="mt-2">
+                                    <img src={imageUrl} alt="Preview" style={{ maxHeight: '150px' }} />
+                                </div>
+                            )}
+                        </Form.Group>
+                    </Col>
+                </Row>
 
                 <hr />
-                <h3>String Questions</h3>
+                <h4>String Questions (up to 4)</h4>
                 {stringQuestions.map((val, i) => (
-                    <div key={i}>
-                        <input
-                            type="text"
+                    <Form.Group className="mb-2" key={`string-${i}`}>
+                        <Form.Control
                             placeholder={`String Question ${i + 1}`}
                             value={val}
                             onChange={(e) =>
                                 setStringQuestions((prev) =>
-                                    prev.map((q, idx) => (idx === i ? e.target.value : q))
+                                    prev.map((v, idx) => (idx === i ? e.target.value : v))
                                 )
                             }
                         />
-                    </div>
+                    </Form.Group>
                 ))}
 
-                <hr />
-                <h3>Multiline Questions</h3>
+                <h4>Multiline Questions (up to 4)</h4>
                 {multilineQuestions.map((val, i) => (
-                    <div key={i}>
-            <textarea
-                placeholder={`Multiline Question ${i + 1}`}
-                value={val}
-                onChange={(e) =>
-                    setMultilineQuestions((prev) =>
-                        prev.map((q, idx) => (idx === i ? e.target.value : q))
-                    )
-                }
-            />
-                    </div>
+                    <Form.Group className="mb-2" key={`multi-${i}`}>
+                        <Form.Control
+                            as="textarea"
+                            rows={2}
+                            placeholder={`Multiline Question ${i + 1}`}
+                            value={val}
+                            onChange={(e) =>
+                                setMultilineQuestions((prev) =>
+                                    prev.map((v, idx) => (idx === i ? e.target.value : v))
+                                )
+                            }
+                        />
+                    </Form.Group>
                 ))}
 
-                <hr />
-                <h3>Integer Questions</h3>
-                <p style={{ fontStyle: 'italic', color: '#555' }}>
-                    (Enter the question text, e.g. "How many apples per day?" The user will provide an integer answer.)
-                </p>
+                <h4>Integer Questions (up to 4)</h4>
                 {intQuestions.map((val, i) => (
-                    <div key={i}>
-                        <input
-                            type="text"
+                    <Form.Group className="mb-2" key={`int-${i}`}>
+                        <Form.Control
                             placeholder={`Integer Question ${i + 1}`}
                             value={val}
                             onChange={(e) =>
                                 setIntQuestions((prev) =>
-                                    prev.map((q, idx) => (idx === i ? e.target.value : q))
+                                    prev.map((v, idx) => (idx === i ? e.target.value : v))
                                 )
                             }
                         />
-                    </div>
+                    </Form.Group>
                 ))}
 
-                <hr />
-                <h3>Checkbox Questions</h3>
+                <h4>Checkbox Questions (up to 4)</h4>
                 {checkboxQuestions.map((val, i) => (
-                    <div key={i}>
-                        <input
-                            type="text"
+                    <Form.Group className="mb-2" key={`checkbox-${i}`}>
+                        <Form.Control
                             placeholder={`Checkbox Question ${i + 1}`}
                             value={val}
                             onChange={(e) =>
                                 setCheckboxQuestions((prev) =>
-                                    prev.map((q, idx) => (idx === i ? e.target.value : q))
+                                    prev.map((v, idx) => (idx === i ? e.target.value : v))
                                 )
                             }
                         />
-                    </div>
+                    </Form.Group>
                 ))}
 
-                <hr />
-                <button type="submit">{isEditMode ? 'Save Changes' : 'Create Template'}</button>
-            </form>
+                <Button variant="primary" type="submit" className="mt-3">
+                    {isEditMode ? 'Save Template' : 'Create Template'}
+                </Button>
+            </Form>
         </div>
     );
 }

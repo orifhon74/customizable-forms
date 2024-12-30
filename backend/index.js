@@ -3,18 +3,24 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
-const { sequelize } = require('./models'); // The index of models (User, Template, Form)
+const { sequelize } = require('./models');
 const userRoutes = require('./routes/userRoutes');
 const templateRoutes = require('./routes/templateRoutes');
 const formRoutes = require('./routes/formRoutes');
 const authRoutes = require('./routes/authRoutes');
+const commentRoutes = require('./routes/commentRoutes');
+const likeRoutes = require('./routes/likeRoutes');
+const tagRoutes = require('./routes/tagRoutes');
+const aggregatorRoutes = require('./routes/aggregatorRoutes');
+const userSearchRoutes = require('./routes/userSearchRoutes');
+
+const i18nMiddleware = require('./middleware/i18nMiddleware');
 
 const app = express();
 
-// CORS setup
 const allowedOrigins = [
     'http://localhost:3000',
-    // Add your production front-end domain here if needed
+    'https://your-frontend.domain',
 ];
 
 app.use(cors({
@@ -30,32 +36,33 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Parse incoming JSON
 app.use(express.json());
 
-// Debug logging for incoming requests
+// Logging
 app.use((req, res, next) => {
-    console.log(`Incoming request: ${req.method} ${req.originalUrl} from origin: ${req.headers.origin}`);
+    console.log(`${req.method} ${req.url} from origin: ${req.headers.origin || 'unknown'}`);
     next();
 });
 
-// Define routes
-app.use('/api/users', userRoutes);
+// Optional: i18n middleware (reads req.user.language or Accept-Language)
+app.use(i18nMiddleware);
+
+// Routes
+app.use('/api/users', userRoutes);       // user mgmt
 app.use('/api/templates', templateRoutes);
 app.use('/api/forms', formRoutes);
-app.use('/api', authRoutes); // login/register => /api/register, /api/login
+app.use('/api', authRoutes);            // /api/register, /api/login
+app.use('/api/comments', commentRoutes);
+app.use('/api/likes', likeRoutes);
+app.use('/api/tags', tagRoutes);
+app.use('/api/aggregator', aggregatorRoutes);
+app.use('/api/user-search', userSearchRoutes); // /api/user-search/search?query=...
 
-// Sync DB and start server
+// Sync DB and start
 const PORT = process.env.PORT || 5001;
-
-sequelize
-    .sync({ alter: true })  // set alter: true for safe schema updates, force: true for dev
+sequelize.sync({ alter: true })
     .then(() => {
-        console.log('Database synced successfully');
-        app.listen(PORT, () => {
-            console.log(`Server running on http://localhost:${PORT}`);
-        });
+        console.log('Database synced');
+        app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
     })
-    .catch((err) => {
-        console.error('Error syncing database:', err);
-    });
+    .catch((err) => console.error('DB sync error:', err));

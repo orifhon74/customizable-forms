@@ -1,43 +1,51 @@
-import React, { useState, useEffect } from 'react';
+// src/components/PublicTemplates.js
+import React, { useEffect, useState } from 'react';
+import { Card, Button, Row, Col, Alert } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 
 function PublicTemplates() {
     const [templates, setTemplates] = useState([]);
     const [error, setError] = useState(null);
-    const isAuthenticated = !!localStorage.getItem('token'); // Check if the user is logged in
 
     useEffect(() => {
-        const fetchTemplates = async () => {
+        const fetchPublic = async () => {
             try {
-                const response = await fetch('http://localhost:5001/api/templates/public');
-                if (!response.ok) throw new Error('Failed to fetch public templates');
-                const data = await response.json();
+                const resp = await fetch('http://localhost:5001/api/templates/public');
+                if (!resp.ok) throw new Error('Failed to fetch public templates');
+                const data = await resp.json();
                 setTemplates(data);
             } catch (err) {
                 setError(err.message);
             }
         };
-        fetchTemplates();
+        fetchPublic();
     }, []);
 
     if (error) {
-        return <div>Error: {error}</div>;
+        return <Alert variant="danger">Error: {error}</Alert>;
     }
 
     return (
         <div>
             <h1>Public Templates</h1>
-            {templates.map((template) => (
-                <div key={template.id} style={{ border: '1px solid black', margin: '10px', padding: '10px' }}>
-                    <h3>{template.title}</h3>
-                    <p>{template.description}</p>
-                    {isAuthenticated && (
-                        <Link to={`/submit-form/${template.id}`}>
-                            <button>Fill Out</button>
-                        </Link>
-                    )}
-                </div>
-            ))}
+            <Row>
+                {templates.map((tmpl) => (
+                    <Col md={4} className="mb-4" key={tmpl.id}>
+                        <Card>
+                            {tmpl.image_url && (
+                                <Card.Img variant="top" src={tmpl.image_url} alt="Template" />
+                            )}
+                            <Card.Body>
+                                <Card.Title>{tmpl.title}</Card.Title>
+                                <Card.Text>{tmpl.description}</Card.Text>
+                                <Link to={`/submit-form/${tmpl.id}`}>
+                                    <Button variant="primary">Fill Out</Button>
+                                </Link>
+                            </Card.Body>
+                        </Card>
+                    </Col>
+                ))}
+            </Row>
         </div>
     );
 }

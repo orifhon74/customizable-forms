@@ -1,4 +1,4 @@
-// routes/templateRoutes.js
+// templateRoutes.js
 const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
@@ -7,39 +7,30 @@ const Template = require('../models/Template');
 const Form = require('../models/Form');
 const authenticate = require('../middleware/authenticate');
 
-/**
- * GET /api/templates/search?search=...
- * - Public endpoint: search by title or description
- */
-router.get('/search', async (req, res) => {
-    const { search } = req.query;
-    try {
-        const whereClause = search
-            ? {
-                [Op.or]: [
-                    { title: { [Op.like]: `%${search}%` } },
-                    { description: { [Op.like]: `%${search}%` } },
-                ],
-            }
-            : {};
+// Utility to check if user can access a private template
+async function canAccessTemplate(template, user) {
+    // If public
+    if (template.access_type === 'public') return true;
 
-        const templates = await Template.findAll({ where: whereClause });
-        return res.json(templates);
-    } catch (err) {
-        console.error('Error searching templates:', err);
-        return res.status(500).json({ error: 'Failed to search templates' });
+    // If admin or owner
+    if (user.role === 'admin' || template.user_id === user.id) return true;
+
+    // If in allowed_users (if using JSON array)
+    if (template.allowed_users && Array.isArray(template.allowed_users)) {
+        if (template.allowed_users.includes(user.id)) return true;
     }
-});
+    return false;
+}
 
 /**
  * GET /api/templates/public
- * - No auth required, returns only access_type = 'public'
+ * Returns all public templates
  */
 router.get('/public', async (req, res) => {
     try {
         const templates = await Template.findAll({
             where: { access_type: 'public' },
-            attributes: ['id', 'title', 'description', 'image_url', 'user_id'],
+            order: [['createdAt', 'DESC']],
         });
         res.json(templates);
     } catch (err) {
@@ -50,59 +41,70 @@ router.get('/public', async (req, res) => {
 
 /**
  * GET /api/templates
- * - Auth required: if admin => all templates, else => user-owned + public
+ * Auth required. If admin => all templates, else => user-owned + public
  */
 router.get('/', authenticate, async (req, res) => {
     try {
         let templates;
         if (req.user.role === 'admin') {
-            templates = await Template.findAll();
+            templates = await Template.findAll({ order: [['createdAt', 'DESC']] });
         } else {
+            // public OR user is owner
             templates = await Template.findAll({
                 where: {
                     [Op.or]: [
                         { access_type: 'public' },
                         { user_id: req.user.id },
+                        // or check allowed_users if using that approach
                     ],
                 },
+                order: [['createdAt', 'DESC']],
             });
         }
-        return res.json(templates);
+        res.json(templates);
     } catch (err) {
         console.error('Error fetching templates:', err);
-        return res.status(500).json({ error: 'Failed to fetch templates' });
+        res.status(500).json({ error: 'Failed to fetch templates' });
     }
 });
 
 /**
  * POST /api/templates
- * - Auth required: create a new template
+ * Auth required: create a new template.
+ * Using "topic" as a string (Education, Quiz, Other).
  */
 router.post('/', authenticate, async (req, res) => {
     try {
         const {
             title,
             description,
-            access_type,
-            topic_id,
+            image_url,
+            topic,  // string
+            access_type = 'public',
+            allowed_users = [],
+            tags = [],
+            // question arrays
             stringQuestions = [],
             multilineQuestions = [],
             intQuestions = [],
             checkboxQuestions = [],
         } = req.body;
 
-        if (!title || !topic_id) {
+        if (!title || !topic) {
             return res.status(400).json({ error: 'Title and topic are required' });
         }
 
+        // Create template
         const template = await Template.create({
             title,
             description: description || null,
+            image_url: image_url || null,
             user_id: req.user.id,
-            access_type: access_type || 'public',
-            topic_id,
+            topic,
+            access_type,
+            allowed_users: allowed_users.length ? allowed_users : null,
 
-            // Single-line
+            // single-line questions
             custom_string1_state: !!stringQuestions[0],
             custom_string1_question: stringQuestions[0] || null,
             custom_string2_state: !!stringQuestions[1],
@@ -112,7 +114,7 @@ router.post('/', authenticate, async (req, res) => {
             custom_string4_state: !!stringQuestions[3],
             custom_string4_question: stringQuestions[3] || null,
 
-            // Multi-line
+            // multiline
             custom_multiline1_state: !!multilineQuestions[0],
             custom_multiline1_question: multilineQuestions[0] || null,
             custom_multiline2_state: !!multilineQuestions[1],
@@ -122,7 +124,7 @@ router.post('/', authenticate, async (req, res) => {
             custom_multiline4_state: !!multilineQuestions[3],
             custom_multiline4_question: multilineQuestions[3] || null,
 
-            // Integer
+            // integer
             custom_int1_state: !!intQuestions[0],
             custom_int1_question: intQuestions[0] || null,
             custom_int2_state: !!intQuestions[1],
@@ -132,7 +134,7 @@ router.post('/', authenticate, async (req, res) => {
             custom_int4_state: !!intQuestions[3],
             custom_int4_question: intQuestions[3] || null,
 
-            // Checkboxes
+            // checkbox
             custom_checkbox1_state: !!checkboxQuestions[0],
             custom_checkbox1_question: checkboxQuestions[0] || null,
             custom_checkbox2_state: !!checkboxQuestions[1],
@@ -143,19 +145,16 @@ router.post('/', authenticate, async (req, res) => {
             custom_checkbox4_question: checkboxQuestions[3] || null,
         });
 
-        return res.status(201).json({
-            message: 'Template created successfully',
-            template,
-        });
+        res.status(201).json({ message: 'Template created', template });
     } catch (err) {
-        console.error('Error creating template:', err.message);
-        return res.status(500).json({ error: 'Failed to create template' });
+        console.error('Error creating template:', err);
+        res.status(500).json({ error: 'Failed to create template' });
     }
 });
 
 /**
  * GET /api/templates/:id
- * - Auth required: must be public, or owner, or admin
+ * Auth required. Must be public or user is owner/admin or in allowed_users.
  */
 router.get('/:id', authenticate, async (req, res) => {
     try {
@@ -163,73 +162,62 @@ router.get('/:id', authenticate, async (req, res) => {
         if (!template) {
             return res.status(404).json({ error: 'Template not found' });
         }
-
-        if (
-            template.access_type !== 'public' &&
-            template.user_id !== req.user.id &&
-            req.user.role !== 'admin'
-        ) {
+        const canAccess = await canAccessTemplate(template, req.user);
+        if (!canAccess) {
             return res.status(403).json({ error: 'Access denied' });
         }
-
-        return res.json(template);
+        res.json(template);
     } catch (err) {
         console.error('Error fetching template:', err);
-        return res.status(500).json({ error: 'Failed to fetch template' });
+        res.status(500).json({ error: 'Failed to fetch template' });
     }
 });
 
 /**
  * PUT /api/templates/:id
- * - Auth required: only admin or owner
+ * Auth required. Only admin or owner can update.
  */
 router.put('/:id', authenticate, async (req, res) => {
     try {
-        const { id } = req.params;
-        const updates = req.body;
-
-        const template = await Template.findByPk(id);
+        const template = await Template.findByPk(req.params.id);
         if (!template) {
             return res.status(404).json({ error: 'Template not found' });
         }
-        if (template.user_id !== req.user.id && req.user.role !== 'admin') {
-            return res.status(403).json({ error: 'Unauthorized to update' });
+        if (req.user.role !== 'admin' && req.user.id !== template.user_id) {
+            return res.status(403).json({ error: 'Unauthorized' });
         }
-
-        await template.update(updates);
-        return res.json({ message: 'Template updated successfully', template });
+        await template.update(req.body);
+        res.json({ message: 'Template updated', template });
     } catch (err) {
         console.error('Error updating template:', err);
-        return res.status(500).json({ error: 'Failed to update template' });
+        res.status(500).json({ error: 'Failed to update template' });
     }
 });
 
 /**
  * DELETE /api/templates/:id
- * - Auth required: only admin or owner
+ * Auth required. Only admin or owner can delete.
  */
 router.delete('/:id', authenticate, async (req, res) => {
     try {
-        const { id } = req.params;
-        const template = await Template.findByPk(id);
+        const template = await Template.findByPk(req.params.id);
         if (!template) {
             return res.status(404).json({ error: 'Template not found' });
         }
-        if (template.user_id !== req.user.id && req.user.role !== 'admin') {
+        if (req.user.role !== 'admin' && req.user.id !== template.user_id) {
             return res.status(403).json({ error: 'Unauthorized to delete' });
         }
-
         await template.destroy();
-        return res.json({ message: 'Template deleted successfully' });
+        res.json({ message: 'Template deleted' });
     } catch (err) {
         console.error('Error deleting template:', err);
-        return res.status(500).json({ error: 'Failed to delete template' });
+        res.status(500).json({ error: 'Failed to delete template' });
     }
 });
 
 /**
  * GET /api/templates/:id/forms
- * - Auth required: only admin or owner
+ * Auth required. Only admin or owner can see forms.
  */
 router.get('/:id/forms', authenticate, async (req, res) => {
     try {
@@ -237,15 +225,16 @@ router.get('/:id/forms', authenticate, async (req, res) => {
         if (!template) {
             return res.status(404).json({ error: 'Template not found' });
         }
-        if (template.user_id !== req.user.id && req.user.role !== 'admin') {
+        // check if user is admin or owner or in allowed users
+        const canAccess = await canAccessTemplate(template, req.user);
+        if (!canAccess) {
             return res.status(403).json({ error: 'Unauthorized' });
         }
-
         const forms = await Form.findAll({ where: { template_id: template.id } });
-        return res.json(forms);
+        res.json(forms);
     } catch (err) {
         console.error('Error fetching forms:', err);
-        return res.status(500).json({ error: 'Failed to fetch forms' });
+        res.status(500).json({ error: 'Failed to fetch forms' });
     }
 });
 

@@ -9,7 +9,7 @@ const router = express.Router();
 
 /**
  * POST /api/register
- * Register a new user
+ * SignUp a new user
  */
 router.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
@@ -76,7 +76,7 @@ router.post('/login', async (req, res) => {
         );
 
         res.json({
-            message: 'Login successful',
+            message: 'SignIn successful',
             token,
             user: {
                 id: user.id,

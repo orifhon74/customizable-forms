@@ -1,31 +1,39 @@
 // src/components/Templates.js
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Alert, Button, Card, Row, Col } from 'react-bootstrap';
 
 function Templates() {
     const [templates, setTemplates] = useState([]);
     const [selectedTemplate, setSelectedTemplate] = useState(null);
     const [forms, setForms] = useState([]);
     const [error, setError] = useState(null);
+
     const navigate = useNavigate();
     const { id } = useParams();
 
-    const user = JSON.parse(localStorage.getItem('user'));
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const token = localStorage.getItem('token');
     const isAdmin = user?.role === 'admin';
 
     useEffect(() => {
+        if (!token) {
+            navigate('/sign-in');
+            return;
+        }
+
         const fetchTemplates = async () => {
-            const token = localStorage.getItem('token');
             try {
-                const response = await fetch('http://localhost:5001/api/templates', {
+                const resp = await fetch('http://localhost:5001/api/templates', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                if (!response.ok) throw new Error('Failed to fetch templates');
-                const data = await response.json();
+                if (!resp.ok) throw new Error('Failed to fetch templates');
+                const data = await resp.json();
                 setTemplates(data);
 
+                // If route param "id" is set, find that template
                 if (id) {
-                    const found = data.find((template) => template.id === parseInt(id));
+                    const found = data.find((t) => t.id === parseInt(id));
                     if (found) {
                         setSelectedTemplate(found);
                         fetchForms(found.id);
@@ -39,16 +47,12 @@ function Templates() {
         };
 
         const fetchForms = async (templateId) => {
-            const token = localStorage.getItem('token');
             try {
-                const response = await fetch(
-                    `http://localhost:5001/api/forms/template/${templateId}`,
-                    {
-                        headers: { Authorization: `Bearer ${token}` },
-                    }
-                );
-                if (!response.ok) throw new Error('Failed to fetch forms');
-                const data = await response.json();
+                const resp = await fetch(`http://localhost:5001/api/templates/${templateId}/forms`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (!resp.ok) throw new Error('Failed to fetch forms');
+                const data = await resp.json();
                 setForms(data);
             } catch (err) {
                 setError(err.message);
@@ -56,16 +60,15 @@ function Templates() {
         };
 
         fetchTemplates();
-    }, [id]);
+    }, [id, token, navigate]);
 
     const handleDeleteTemplate = async (templateId) => {
-        const token = localStorage.getItem('token');
         try {
-            const response = await fetch(`http://localhost:5001/api/templates/${templateId}`, {
+            const resp = await fetch(`http://localhost:5001/api/templates/${templateId}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
-            if (!response.ok) throw new Error('Failed to delete template');
+            if (!resp.ok) throw new Error('Failed to delete template');
             setTemplates((prev) => prev.filter((t) => t.id !== templateId));
             if (templateId === parseInt(id)) {
                 navigate('/templates');
@@ -75,96 +78,138 @@ function Templates() {
         }
     };
 
-    const handleEditTemplate = (templateId) => {
-        navigate(`/create-template?edit=true&templateId=${templateId}`);
-    };
-
     const handleDeleteForm = async (formId) => {
-        const token = localStorage.getItem('token');
         try {
-            const response = await fetch(`http://localhost:5001/api/forms/${formId}`, {
+            const resp = await fetch(`http://localhost:5001/api/forms/${formId}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
-            if (!response.ok) throw new Error('Failed to delete form');
+            if (!resp.ok) throw new Error('Failed to delete form');
             setForms((prev) => prev.filter((f) => f.id !== formId));
         } catch (err) {
             console.error(err.message);
         }
     };
 
-    const handleEditForm = (formId) => {
-        navigate(`/edit-form/${formId}`);
-    };
-
-    if (error) return <div style={{ color: 'red' }}>Error: {error}</div>;
+    if (error) return <Alert variant="danger">{error}</Alert>;
 
     return (
-        <div style={{ margin: '20px' }}>
+        <div className="container mt-3">
             {!id ? (
-                <div>
+                <>
                     <h1>Your Templates</h1>
-                    {templates.map((template) => (
-                        <div
-                            key={template.id}
-                            style={{ border: '1px solid black', padding: '10px', marginBottom: '10px' }}
-                        >
-                            <h2>{template.title}</h2>
-                            <p>{template.description}</p>
-                            <button onClick={() => navigate(`/template/${template.id}`)}>View Details</button>
-                            <button onClick={() => handleEditTemplate(template.id)}>Edit Template</button>
-                            <button onClick={() => handleDeleteTemplate(template.id)}>Delete Template</button>
-                        </div>
-                    ))}
-                </div>
+                    <Row>
+                        {templates.map((tmpl) => (
+                            <Col md={4} key={tmpl.id} className="mb-3">
+                                <Card>
+                                    {tmpl.image_url && (
+                                        <Card.Img variant="top" src={tmpl.image_url} style={{ objectFit: 'cover', height: '200px' }} />
+                                    )}
+                                    <Card.Body>
+                                        <Card.Title>{tmpl.title}</Card.Title>
+                                        <Card.Text>{tmpl.description}</Card.Text>
+                                        <Button
+                                            onClick={() => navigate(`/templates/${tmpl.id}`)}
+                                            variant="primary"
+                                            className="me-2"
+                                        >
+                                            View Details
+                                        </Button>
+                                        {(isAdmin || user.id === tmpl.user_id) && (
+                                            <>
+                                                <Button
+                                                    onClick={() => navigate(`/create-template?edit=true&templateId=${tmpl.id}`)}
+                                                    variant="secondary"
+                                                    className="me-2"
+                                                >
+                                                    Edit
+                                                </Button>
+                                                <Button variant="danger" onClick={() => handleDeleteTemplate(tmpl.id)}>
+                                                    Delete
+                                                </Button>
+                                            </>
+                                        )}
+                                    </Card.Body>
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
+                </>
             ) : selectedTemplate ? (
-                <div style={{ border: '1px solid gray', padding: '20px', marginTop: '20px' }}>
+                <div>
                     <h1>{selectedTemplate.title}</h1>
                     <p>{selectedTemplate.description}</p>
-                    <p>Access Type: {selectedTemplate.access_type}</p>
-                    {(isAdmin || user?.id === selectedTemplate.user_id) && (
+                    {selectedTemplate.image_url && (
+                        <img src={selectedTemplate.image_url} alt="Template" style={{ maxWidth: '400px' }} />
+                    )}
+                    <p><strong>Topic:</strong> {selectedTemplate.topic}</p>
+                    <p><strong>Access:</strong> {selectedTemplate.access_type}</p>
+
+                    {(isAdmin || user.id === selectedTemplate.user_id) && (
                         <>
-                            <button onClick={() => handleEditTemplate(selectedTemplate.id)}>Edit Template</button>
-                            <button onClick={() => handleDeleteTemplate(selectedTemplate.id)}>Delete Template</button>
+                            <Button
+                                onClick={() => navigate(`/create-template?edit=true&templateId=${selectedTemplate.id}`)}
+                                variant="secondary"
+                                className="me-2"
+                            >
+                                Edit Template
+                            </Button>
+                            <Button
+                                variant="danger"
+                                onClick={() => handleDeleteTemplate(selectedTemplate.id)}
+                            >
+                                Delete Template
+                            </Button>
                         </>
                     )}
-                    <button onClick={() => navigate('/templates')}>Back to Templates</button>
+                    <Button variant="outline-primary" className="ms-2" onClick={() => navigate('/templates')}>
+                        Back to Templates
+                    </Button>
 
+                    <hr />
                     <h2>Submitted Forms</h2>
                     {forms.length === 0 ? (
-                        <p>No forms have been submitted yet.</p>
+                        <Alert variant="info">No forms have been submitted yet.</Alert>
                     ) : (
                         <ul>
-                            {forms.map((form) => (
-                                <li key={form.id}>
-                                    <p>
-                                        <strong>Submitted by User ID:</strong> {form.user_id}
-                                    </p>
-                                    <p>
-                                        <strong>Answers:</strong>
-                                    </p>
+                            {forms.map((f) => (
+                                <li key={f.id} className="mb-3">
+                                    <p><strong>User ID:</strong> {f.user_id}</p>
+                                    <strong>Answers:</strong>
                                     <ul>
-                                        {Object.keys(form)
-                                            .filter((key) => key.includes('_answer') && form[key])
+                                        {Object.keys(f)
+                                            .filter((k) => k.includes('_answer') && f[k])
                                             .map((key) => {
+                                                // "string1_answer" => "string1_question"
                                                 const questionKey = key.replace('_answer', '_question');
                                                 const question = selectedTemplate[questionKey];
+                                                const val = typeof f[key] === 'boolean'
+                                                    ? f[key] ? 'Yes' : 'No'
+                                                    : f[key];
                                                 return (
                                                     <li key={key}>
-                                                        <strong>{question || key.replace('_answer', '')}:</strong>{' '}
-                                                        {typeof form[key] === 'boolean'
-                                                            ? form[key]
-                                                                ? 'Yes'
-                                                                : 'No'
-                                                            : form[key]}
+                                                        <strong>{question || key}:</strong> {val}
                                                     </li>
                                                 );
                                             })}
                                     </ul>
-                                    {(isAdmin || user?.id === selectedTemplate.user_id) && (
+                                    {(isAdmin || user.id === selectedTemplate.user_id) && (
                                         <>
-                                            <button onClick={() => handleEditForm(form.id)}>Edit Form</button>
-                                            <button onClick={() => handleDeleteForm(form.id)}>Delete Form</button>
+                                            <Button
+                                                variant="outline-secondary"
+                                                size="sm"
+                                                className="me-2"
+                                                onClick={() => navigate(`/edit-form/${f.id}`)}
+                                            >
+                                                Edit Form
+                                            </Button>
+                                            <Button
+                                                variant="outline-danger"
+                                                size="sm"
+                                                onClick={() => handleDeleteForm(f.id)}
+                                            >
+                                                Delete Form
+                                            </Button>
                                         </>
                                     )}
                                 </li>
@@ -173,7 +218,7 @@ function Templates() {
                     )}
                 </div>
             ) : (
-                <div>Loading template...</div>
+                <Alert variant="info">Loading template...</Alert>
             )}
         </div>
     );

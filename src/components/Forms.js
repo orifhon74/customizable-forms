@@ -1,57 +1,55 @@
 // src/components/Forms.js
 import React, { useEffect, useState } from 'react';
+import { Table, Alert } from 'react-bootstrap';
 
 function Forms() {
     const [forms, setForms] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const token = localStorage.getItem('token');
 
     useEffect(() => {
         const fetchForms = async () => {
             try {
-                const token = localStorage.getItem('token');
-                if (!token) throw new Error('No token found. Please log in.');
-                const response = await fetch('http://localhost:5001/api/forms', {
+                const resp = await fetch('http://localhost:5001/api/forms', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                const data = await response.json();
+                if (!resp.ok) throw new Error('Failed to fetch forms');
+                const data = await resp.json();
                 setForms(data);
             } catch (err) {
                 setError(err.message);
-            } finally {
-                setLoading(false);
             }
         };
         fetchForms();
-    }, []);
+    }, [token]);
 
-    if (loading) return <h2>Loading...</h2>;
-    if (error) return <h2 style={{ color: 'red' }}>Error: {error}</h2>;
+    if (error) {
+        return <Alert variant="danger">Error: {error}</Alert>;
+    }
 
     return (
-        <div style={{ margin: '20px' }}>
-            <h1>Forms</h1>
-            <table>
+        <div className="mt-3">
+            <h1>Your Forms</h1>
+            <Table striped bordered hover responsive className="mt-3">
                 <thead>
                 <tr>
-                    <th>Template</th>
+                    <th>Form ID</th>
+                    <th>Template Title</th>
                     <th>Submitted By</th>
                     <th>Date</th>
                 </tr>
                 </thead>
                 <tbody>
-                {forms.map((form) => (
-                    <tr key={form.id}>
-                        <td>{form.Template?.title || 'N/A'}</td>
-                        <td>{form.User?.username || 'N/A'}</td>
-                        <td>{new Date(form.createdAt).toLocaleDateString()}</td>
+                {forms.map((f) => (
+                    <tr key={f.id}>
+                        <td>{f.id}</td>
+                        <td>{f.Template?.title || 'N/A'}</td>
+                        <td>{f.User?.username || 'You'}</td>
+                        <td>{new Date(f.createdAt).toLocaleDateString()}</td>
                     </tr>
                 ))}
                 </tbody>
-            </table>
+            </Table>
         </div>
     );
 }
