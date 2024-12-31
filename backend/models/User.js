@@ -19,11 +19,15 @@ const User = sequelize.define('User', {
     },
     role: {
         type: DataTypes.STRING,
-        defaultValue: 'user',
+        defaultValue: 'user', // or 'admin'
+    },
+    language: {
+        type: DataTypes.STRING,
+        defaultValue: 'en', // 'en' or 'uz'
     },
 }, {
     timestamps: true,
-    paranoid: true, // enables soft deletes
+    paranoid: true, // soft delete
 });
 
 module.exports = User;
