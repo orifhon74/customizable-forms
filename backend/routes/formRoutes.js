@@ -135,17 +135,31 @@ router.post('/:templateId/submit', authenticate, async (req, res) => {
 router.get('/template/:templateId', authenticate, async (req, res) => {
     try {
         const { templateId } = req.params;
+
+        // Fetch the template
         const template = await Template.findByPk(templateId);
         if (!template) {
             return res.status(404).json({ error: 'Template not found' });
         }
 
-        if (req.user.role !== 'admin' && req.user.id !== template.user_id) {
+        // Check if the user has access
+        if (
+            req.user.role !== 'admin' &&
+            req.user.id !== template.user_id &&
+            template.access_type !== 'public'
+        ) {
             return res.status(403).json({ error: 'Unauthorized' });
         }
 
+        // Fetch forms associated with the template
         const forms = await Form.findAll({ where: { template_id: templateId } });
-        res.json(forms);
+
+        // Check if the user is the owner of any forms (if needed)
+        const filteredForms = forms.filter(
+            (form) => req.user.role === 'admin' || form.user_id === req.user.id || req.user.id === template.user_id
+        );
+
+        res.json(filteredForms);
     } catch (err) {
         console.error('Error fetching forms:', err);
         res.status(500).json({ error: 'Failed to fetch forms' });

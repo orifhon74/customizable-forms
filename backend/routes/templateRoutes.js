@@ -6,6 +6,7 @@ const { Op } = require('sequelize');
 const Template = require('../models/Template');
 const Form = require('../models/Form');
 const authenticate = require('../middleware/authenticate');
+const sequelize = require('../db');
 
 /**
  * GET /api/templates/search?search=...
@@ -89,6 +90,7 @@ router.post('/', authenticate, async (req, res) => {
             multilineQuestions = [],
             intQuestions = [],
             checkboxQuestions = [],
+            image_url,
         } = req.body;
 
         if (!title || !topic_id) {
@@ -101,6 +103,7 @@ router.post('/', authenticate, async (req, res) => {
             user_id: req.user.id,
             access_type: access_type || 'public',
             topic_id,
+            image_url,
 
             // Single-line
             custom_string1_state: !!stringQuestions[0],
@@ -246,6 +249,44 @@ router.get('/:id/forms', authenticate, async (req, res) => {
     } catch (err) {
         console.error('Error fetching forms:', err);
         return res.status(500).json({ error: 'Failed to fetch forms' });
+    }
+});
+
+// No `authenticate` middleware for these routes since they are public
+router.get('/latest', async (req, res) => {
+    try {
+        const templates = await Template.findAll({
+            order: [['createdAt', 'DESC']],
+            limit: 6, // Customize how many latest templates to fetch
+            attributes: ['id', 'title', 'description', 'image_url', 'user_id'],
+        });
+        res.json(templates);
+    } catch (err) {
+        console.error('Error fetching latest templates:', err);
+        res.status(500).json({ error: 'Failed to fetch latest templates' });
+    }
+});
+
+router.get('/top', async (req, res) => {
+    try {
+        const templates = await Template.findAll({
+            include: [{ model: Form, attributes: [] }],
+            attributes: [
+                'id',
+                'title',
+                'description',
+                'image_url',
+                'user_id',
+                [sequelize.fn('COUNT', sequelize.col('Forms.id')), 'forms_count'],
+            ],
+            group: ['Template.id'],
+            order: [[sequelize.literal('forms_count'), 'DESC']],
+            limit: 5,
+        });
+        res.json(templates);
+    } catch (err) {
+        console.error('Error fetching top templates:', err);
+        res.status(500).json({ error: 'Failed to fetch top templates' });
     }
 });
 
