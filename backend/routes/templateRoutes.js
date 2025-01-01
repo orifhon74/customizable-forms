@@ -163,7 +163,7 @@ router.get('/:id', async (req, res) => {
             include: [
                 {
                     model: Tag,
-                    through: TemplateTag,
+                    through: { attributes: [] },
                     attributes: ['id', 'name'],
                 },
                 {
@@ -311,13 +311,10 @@ router.post('/', authenticate, async (req, res) => {
         });
 
         // Handle tags
-        if (tags && Array.isArray(tags)) {
+        if (tags.length > 0) {
             for (const tagName of tags) {
-                // Find or create the tag
                 const [tag] = await Tag.findOrCreate({ where: { name: tagName } });
-
-                // Create the association between the template and the tag
-                await TemplateTag.create({ template_id: template.id, tag_id: tag.id });
+                await template.addTag(tag);
             }
         }
 

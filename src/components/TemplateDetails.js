@@ -106,14 +106,53 @@ function TemplateDetails() {
             <h1>{template.title}</h1>
             <p>{template.description}</p>
             <p>
-                Tags: {template.Tags?.length > 0 ? template.Tags.map((tag) => tag.name).join(', ') : 'No tags'}
+                <strong>Tags:</strong> {template.Tags?.length > 0 ? template.Tags.map((tag) => tag.name).join(', ') : 'No tags'}
             </p>
             <p>Likes: {likes}</p>
             <button onClick={handleLike} disabled={likeDisabled}>
                 {likeDisabled ? 'Liking...' : 'Like'}
             </button>
 
-            <h3>Comments</h3>
+            <h3>Questions: </h3>
+            <div>
+                <h4>String Questions</h4>
+                <ul>
+                    {Array.from({length: 4}).map((_, index) => {
+                        const question = template[`custom_string${index + 1}_question`];
+                        const state = template[`custom_string${index + 1}_state`];
+                        return state && question ? <li key={index}>{question}</li> : null;
+                    })}
+                </ul>
+
+                <h4>Multiline Questions</h4>
+                <ul>
+                    {Array.from({length: 4}).map((_, index) => {
+                        const question = template[`custom_multiline${index + 1}_question`];
+                        const state = template[`custom_multiline${index + 1}_state`];
+                        return state && question ? <li key={index}>{question}</li> : null;
+                    })}
+                </ul>
+
+                <h4>Integer Questions</h4>
+                <ul>
+                    {Array.from({length: 4}).map((_, index) => {
+                        const question = template[`custom_int${index + 1}_question`];
+                        const state = template[`custom_int${index + 1}_state`];
+                        return state && question ? <li key={index}>{question}</li> : null;
+                    })}
+                </ul>
+
+                <h4>Checkbox Questions</h4>
+                <ul>
+                    {Array.from({length: 4}).map((_, index) => {
+                        const question = template[`custom_checkbox${index + 1}_question`];
+                        const state = template[`custom_checkbox${index + 1}_state`];
+                        return state && question ? <li key={index}>{question}</li> : null;
+                    })}
+                </ul>
+            </div>
+
+            <h3>Comments: </h3>
             <ul>
                 {comments.map((comment) => (
                     <li key={comment.id}>
@@ -122,14 +161,14 @@ function TemplateDetails() {
                 ))}
             </ul>
 
-            <div style={{ marginTop: '20px' }}>
+            <div style={{marginTop: '20px'}}>
                 <textarea
                     placeholder="Add a comment"
                     value={commentContent}
                     onChange={(e) => setCommentContent(e.target.value)}
-                    style={{ width: '100%', height: '100px' }}
+                    style={{width: '100%', height: '100px'}}
                 />
-                <button onClick={handleAddComment} style={{ marginTop: '10px' }}>
+                <button onClick={handleAddComment} style={{marginTop: '10px'}}>
                     Submit Comment
                 </button>
             </div>

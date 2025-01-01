@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import TagCloud from "./TagCloud";
 
 function Home() {
     const [latestTemplates, setLatestTemplates] = useState([]);
@@ -162,22 +163,9 @@ function Home() {
             </section>
 
             <section>
-                <h2>Tag Cloud</h2>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                    {tags.map((tag) => (
-                        <span
-                            key={tag.name}
-                            style={{
-                                padding: '5px 10px',
-                                backgroundColor: '#e0e0e0',
-                                borderRadius: '15px',
-                                cursor: 'pointer',
-                            }}
-                            onClick={() => handleTagClick(tag.name)}
-                        >
-                            {tag.name} ({tag.count})
-                        </span>
-                    ))}
+                {/*<h2>Tag Cloud</h2>*/}
+                <div>
+                    <TagCloud tags={tags}/>
                 </div>
             </section>
         </div>
