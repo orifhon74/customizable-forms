@@ -14,6 +14,7 @@ import Forms from './components/Forms';
 import Login from './components/Login';
 import Register from './components/Register';
 import EditForm from './components/EditForm';
+import TemplateDetails from "./components/TemplateDetails";
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -138,6 +139,8 @@ function App() {
                         path="/template/:id"
                         element={isAuthenticated ? <Templates /> : <Navigate to="/login" />}
                     />
+                    <Route path="/templates/:id"
+                           element={<TemplateDetails />} />
                     <Route
                         path="/forms"
                         element={isAuthenticated ? <Forms /> : <Navigate to="/login" />}

@@ -1,4 +1,3 @@
-// src/components/Home.js
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -7,6 +6,9 @@ function Home() {
     const [topTemplates, setTopTemplates] = useState([]);
     const [tags, setTags] = useState([]);
     const [error, setError] = useState(null);
+
+    const [templates, setTemplates] = useState([]);
+    const isAuthenticated = !!localStorage.getItem('token');
 
     const navigate = useNavigate();
 
@@ -41,6 +43,34 @@ function Home() {
         navigate(`/search-results?q=${tagName}`);
     };
 
+    const handleLike = async (templateId) => {
+        if (!isAuthenticated) {
+            setError('You must be logged in to like a template');
+            return;
+        }
+
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch('http://localhost:5001/api/likes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ template_id: templateId }),
+            });
+            if (!response.ok) throw new Error('Failed to like template');
+            const updatedTemplates = templates.map((template) =>
+                template.id === templateId
+                    ? { ...template, likeCount: (template.likeCount || 0) + 1 }
+                    : template
+            );
+            setTemplates(updatedTemplates);
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
     return (
         <div style={{ margin: '20px' }}>
             <h1>Home</h1>
@@ -65,13 +95,20 @@ function Home() {
                                 <img
                                     src={template.image_url}
                                     alt={template.title}
-                                    style={{ width: '100%', height: '150px', objectFit: 'cover' }}
+                                    style={{width: '100%', height: '150px', objectFit: 'cover'}}
                                 />
                             )}
                             <p>
                                 <strong>Author:</strong> {template.user_id}
                             </p>
-                            <Link to={`/templates/${template.id}`}>View Template</Link>
+                            <p>Likes: {template.likeCount || 0}</p>
+                            <button onClick={() => handleLike(template.id)}>Like</button>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => navigate(`/templates/${template.id}`)}
+                            >
+                                View Details
+                            </button>
                         </div>
                     ))}
                 </div>
@@ -102,7 +139,11 @@ function Home() {
                             <p>
                                 <strong>Forms Filled:</strong> {template.forms_count}
                             </p>
-                            <Link to={`/templates/${template.id}`}>View Template</Link>
+                            <p>Likes: {template.likeCount || 0}</p>
+                            <button onClick={() => handleLike(template.id)}>Like</button>
+                            <Link to={`/templates/${template.id}`}>
+                                <button>View Details</button>
+                            </Link>
                         </div>
                     ))}
                 </div>

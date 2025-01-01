@@ -12,23 +12,40 @@ function Templates() {
 
     const user = JSON.parse(localStorage.getItem('user'));
     const isAdmin = user?.role === 'admin';
+    const userRole = user?.role; // e.g., "admin" or "user"
+    const userId = user?.id;
 
     useEffect(() => {
-        const fetchTemplates = async () => {
+        const fetchTemplatesAndForms = async () => {
             const token = localStorage.getItem('token');
+            if (!token) {
+                setError('Unauthorized: No token found');
+                return;
+            }
+
             try {
+                // Fetch templates
                 const response = await fetch('http://localhost:5001/api/templates', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                if (!response.ok) throw new Error('Failed to fetch templates');
-                const data = await response.json();
-                setTemplates(data);
 
+                if (!response.ok) throw new Error('Failed to fetch templates');
+
+                const data = await response.json();
+
+                if (userRole === 'admin') {
+                    setTemplates(data); // Admins see all templates
+                } else {
+                    const userTemplates = data.filter((template) => template.user_id === userId);
+                    setTemplates(userTemplates); // Users see only their own templates
+                }
+
+                // If an ID is provided, find and set the selected template
                 if (id) {
-                    const found = data.find((template) => template.id === parseInt(id));
-                    if (found) {
-                        setSelectedTemplate(found);
-                        fetchForms(found.id);
+                    const foundTemplate = data.find((template) => template.id === parseInt(id));
+                    if (foundTemplate) {
+                        setSelectedTemplate(foundTemplate);
+                        await fetchForms(foundTemplate.id); // Fetch forms for the selected template
                     } else {
                         setError('Template not found');
                     }
@@ -55,8 +72,8 @@ function Templates() {
             }
         };
 
-        fetchTemplates();
-    }, [id]);
+        fetchTemplatesAndForms();
+    }, [id, userRole, userId]);
 
     const handleDeleteTemplate = async (templateId) => {
         const token = localStorage.getItem('token');
@@ -111,6 +128,13 @@ function Templates() {
                         >
                             <h2>{template.title}</h2>
                             <p>{template.description}</p>
+                            {template.image_url && (
+                                <img
+                                    src={template.image_url}
+                                    alt={template.title}
+                                    style={{ width: '20%', height: '150px' }}
+                                />
+                            )}
                             <button onClick={() => navigate(`/template/${template.id}`)}>View Details</button>
                             <button onClick={() => handleEditTemplate(template.id)}>Edit Template</button>
                             <button onClick={() => handleDeleteTemplate(template.id)}>Delete Template</button>

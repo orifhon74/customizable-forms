@@ -29,15 +29,8 @@ Like.belongsTo(Template, { foreignKey: 'template_id' });
 User.hasMany(Like, { foreignKey: 'user_id', onDelete: 'CASCADE' });
 Like.belongsTo(User, { foreignKey: 'user_id' });
 
-// Many-to-many: Template <-> Tag
-Template.belongsToMany(Tag, {
-    through: TemplateTag,
-    foreignKey: 'template_id',
-});
-Tag.belongsToMany(Template, {
-    through: TemplateTag,
-    foreignKey: 'tag_id',
-});
+Template.belongsToMany(Tag, { through: TemplateTag, foreignKey: 'template_id' });
+Tag.belongsToMany(Template, { through: TemplateTag, foreignKey: 'tag_id' });
 
 module.exports = {
     sequelize,

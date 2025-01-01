@@ -1,6 +1,8 @@
 // src/components/TemplateForm.js
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { storage } from '../firebase'; // Firebase storage instance
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 function TemplateForm() {
     const location = useLocation();
@@ -13,16 +15,32 @@ function TemplateForm() {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [accessType, setAccessType] = useState('public');
-    const [topicId, setTopicId] = useState(''); // must be an integer in your DB, but we'll store as string here
+    const [topic, setTopic] = useState(''); // "Education", "Quiz", "Other"
+    const [imageFile, setImageFile] = useState(null); // Image upload state
+    const [imageUrl, setImageUrl] = useState(''); // Firebase URL for uploaded image
 
-    // Arrays to store up to 4 question strings for each type
     const [stringQuestions, setStringQuestions] = useState(['', '', '', '']);
     const [multilineQuestions, setMultilineQuestions] = useState(['', '', '', '']);
-    const [intQuestions, setIntQuestions] = useState(['', '', '', '']); // user enters question text as a string
+    const [intQuestions, setIntQuestions] = useState(['', '', '', '']);
     const [checkboxQuestions, setCheckboxQuestions] = useState(['', '', '', '']);
 
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
+    const [uploading, setUploading] = useState(false);
+
+    const [tags, setTags] = useState([]); // Store tags as an array of strings
+    const [tagInput, setTagInput] = useState(''); // Temporary input for the tag field
+
+    const handleAddTag = () => {
+        if (tagInput.trim() && !tags.includes(tagInput)) {
+            setTags((prev) => [...prev, tagInput.trim()]);
+            setTagInput('');
+        }
+    };
+
+    const handleRemoveTag = (tagToRemove) => {
+        setTags((prev) => prev.filter((tag) => tag !== tagToRemove));
+    };
 
     // --------------------------------------------
     // Fetch existing template if editing
@@ -38,11 +56,12 @@ function TemplateForm() {
                     if (!resp.ok) throw new Error('Failed to fetch template for editing');
                     const data = await resp.json();
 
-                    // Populate the form fields
                     setTitle(data.title || '');
                     setDescription(data.description || '');
                     setAccessType(data.access_type || 'public');
-                    setTopicId(String(data.topic_id) || '');
+                    setTopic(data.topic_id || ''); // Assuming topic_id maps to "Education", etc.
+                    setImageUrl(data.image_url || '');
+                    setTags(data.tags || []);
 
                     setStringQuestions([
                         data.custom_string1_question || '',
@@ -90,22 +109,22 @@ function TemplateForm() {
             return;
         }
 
-        // Decide POST or PUT based on edit mode
         const url = isEditMode
             ? `http://localhost:5001/api/templates/${templateId}`
             : 'http://localhost:5001/api/templates';
         const method = isEditMode ? 'PUT' : 'POST';
 
-        // The back end expects arrays for questions
         const requestBody = {
             title,
             description,
             access_type: accessType,
-            topic_id: parseInt(topicId, 10) || 0,
+            topic_id: topic, // Directly use topic name, assuming backend supports it
+            image_url: imageUrl, // Firebase URL
             stringQuestions,
             multilineQuestions,
-            intQuestions,      // Our user enters the question text as a string
+            intQuestions,
             checkboxQuestions,
+            tags,
         };
 
         try {
@@ -128,6 +147,30 @@ function TemplateForm() {
         }
     };
 
+
+    // Handle image file selection
+    const handleImageUpload = async (e) => {
+        const file = e.target?.files?.[0]; // Safely access the file
+        if (!file) {
+            setError('No file selected');
+            return;
+        }
+
+        setImageFile(file);
+
+        const storageRef = ref(storage, `template-images/${Date.now()}-${file.name}`);
+        try {
+            setUploading(true);
+            const snapshot = await uploadBytes(storageRef, file);
+            const url = await getDownloadURL(snapshot.ref);
+            setImageUrl(url); // Set the Firebase URL
+            setUploading(false);
+        } catch (err) {
+            setError('Failed to upload image');
+            setUploading(false);
+        }
+    };
+
     // --------------------------------------------
     // Render
     // --------------------------------------------
@@ -139,7 +182,6 @@ function TemplateForm() {
             {success && <p style={{ color: 'green' }}>{success}</p>}
 
             <form onSubmit={handleSubmit}>
-                {/* Basic Template Fields */}
                 <div>
                     <label>Title:</label>
                     <input
@@ -167,15 +209,52 @@ function TemplateForm() {
                 </div>
 
                 <div>
-                    <label>Topic ID:</label>
-                    <input
-                        type="number"
-                        value={topicId}
-                        onChange={(e) => setTopicId(e.target.value)}
-                    />
+                    <label>Topic:</label>
+                    <select value={topic} onChange={(e) => setTopic(e.target.value)}>
+                        <option value="">Select a topic</option>
+                        <option value="Education">Education</option>
+                        <option value="Quiz">Quiz</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
 
-                <hr />
+                {/*<div>*/}
+                {/*    <label>Image (Upload to Firebase):</label>*/}
+                {/*    <input type="file" onChange={(e) => setImageFile(e.target.files[0])}/>*/}
+                {/*    <button type="button" onClick={handleImageUpload} disabled={uploading}>*/}
+                {/*        {uploading ? 'Uploading...' : 'Upload Image'}*/}
+                {/*    </button>*/}
+                {/*</div>*/}
+
+                <div>
+                    <label>Image (Upload to Firebase):</label>
+                    <input type="file" onChange={handleImageUpload}/>
+                </div>
+
+                <div>
+                    <label>Tags:</label>
+                    <input
+                        type="text"
+                        value={tagInput}
+                        onChange={(e) => setTagInput(e.target.value)}
+                        placeholder="Enter a tag"
+                    />
+                    <button type="button" onClick={handleAddTag}>
+                        Add Tag
+                    </button>
+                </div>
+                <div>
+                    {tags.map((tag, index) => (
+                        <span key={index} style={{marginRight: '10px'}}>
+                        {tag}
+                            <button type="button" onClick={() => handleRemoveTag(tag)}>
+                            ✕
+                        </button>
+                    </span>
+                    ))}
+                </div>
+
+                <hr/>
                 <h3>String Questions</h3>
                 {stringQuestions.map((val, i) => (
                     <div key={i}>
@@ -192,27 +271,24 @@ function TemplateForm() {
                     </div>
                 ))}
 
-                <hr />
+                <hr/>
                 <h3>Multiline Questions</h3>
                 {multilineQuestions.map((val, i) => (
                     <div key={i}>
-            <textarea
-                placeholder={`Multiline Question ${i + 1}`}
-                value={val}
-                onChange={(e) =>
-                    setMultilineQuestions((prev) =>
-                        prev.map((q, idx) => (idx === i ? e.target.value : q))
-                    )
-                }
-            />
+                        <textarea
+                            placeholder={`Multiline Question ${i + 1}`}
+                            value={val}
+                            onChange={(e) =>
+                                setMultilineQuestions((prev) =>
+                                    prev.map((q, idx) => (idx === i ? e.target.value : q))
+                                )
+                            }
+                        />
                     </div>
                 ))}
 
-                <hr />
+                <hr/>
                 <h3>Integer Questions</h3>
-                <p style={{ fontStyle: 'italic', color: '#555' }}>
-                    (Enter the question text, e.g. "How many apples per day?" The user will provide an integer answer.)
-                </p>
                 {intQuestions.map((val, i) => (
                     <div key={i}>
                         <input
@@ -228,7 +304,7 @@ function TemplateForm() {
                     </div>
                 ))}
 
-                <hr />
+                <hr/>
                 <h3>Checkbox Questions</h3>
                 {checkboxQuestions.map((val, i) => (
                     <div key={i}>
@@ -245,7 +321,7 @@ function TemplateForm() {
                     </div>
                 ))}
 
-                <hr />
+                <hr/>
                 <button type="submit">{isEditMode ? 'Save Changes' : 'Create Template'}</button>
             </form>
         </div>

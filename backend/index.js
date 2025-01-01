@@ -27,6 +27,7 @@ const allowedOrigins = [
 app.use(cors({
     origin: function (origin, callback) {
         if (!origin || allowedOrigins.includes(origin)) {
+            // Allow null origins (like Postman or server-side requests)
             callback(null, true);
         } else {
             console.error(`Blocked by CORS: ${origin}`);
@@ -35,6 +36,7 @@ app.use(cors({
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true, // Allow cookies to be sent with requests
 }));
 
 // Parse incoming JSON
@@ -43,6 +45,7 @@ app.use(express.json());
 // Debug logging for incoming requests
 app.use((req, res, next) => {
     console.log(`Incoming request: ${req.method} ${req.originalUrl} from origin: ${req.headers.origin}`);
+    // console.log('Headers:', req.headers); // Log all headers for debugging
     next();
 });
 
