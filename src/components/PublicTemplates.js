@@ -61,7 +61,7 @@ function PublicTemplates() {
                     <p>{template.description}</p>
                     <p>Likes: {template.likeCount || 0}</p>
                     <button onClick={() => handleLike(template.id)}>Like</button>
-                    <Link to={`/template/${template.id}`}>
+                    <Link to={`/templates/${template.id}`}>
                         <button>View Details</button>
                     </Link>
                     {isAuthenticated && (

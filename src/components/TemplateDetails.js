@@ -7,6 +7,8 @@ function TemplateDetails() {
     const [comments, setComments] = useState([]);
     const [likes, setLikes] = useState(0);
     const [error, setError] = useState(null);
+    const [likeDisabled, setLikeDisabled] = useState(false); // For disabling like button
+    const [commentContent, setCommentContent] = useState(''); // Controlled input for comment
 
     useEffect(() => {
         const fetchTemplateDetails = async () => {
@@ -20,8 +22,12 @@ function TemplateDetails() {
                 const data = await resp.json();
 
                 setTemplate(data);
-                setComments(data.Comments || []);
                 setLikes(data.likeCount || 0);
+
+                // Fetch comments
+                const commentsResp = await fetch(`http://localhost:5001/api/comments/${id}`);
+                const commentsData = await commentsResp.json();
+                setComments(commentsData);
             } catch (err) {
                 console.error(err.message);
                 setError(err.message);
@@ -32,40 +38,63 @@ function TemplateDetails() {
     }, [id]);
 
     const handleLike = async () => {
+        if (!localStorage.getItem('token')) {
+            setError('You must be logged in to like a template.');
+            return;
+        }
+
         try {
-            const resp = await fetch(`http://localhost:5001/api/likes/${id}`, {
+            setLikeDisabled(true); // Disable button to prevent multiple clicks
+            const resp = await fetch(`http://localhost:5001/api/likes`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem('token')}`,
+                    'Content-Type': 'application/json',
                 },
+                body: JSON.stringify({ template_id: id }),
             });
             if (!resp.ok) throw new Error('Failed to like template');
             setLikes((prevLikes) => prevLikes + 1);
         } catch (err) {
             console.error(err.message);
+            setError(err.message);
+        } finally {
+            setLikeDisabled(false);
         }
     };
 
-    const handleAddComment = async (comment) => {
+    const handleAddComment = async () => {
+        if (!localStorage.getItem('token')) {
+            setError('You must be logged in to comment.');
+            return;
+        }
+
+        if (!commentContent.trim()) {
+            setError('Comment content cannot be empty.');
+            return;
+        }
+
         try {
-            const resp = await fetch(`http://localhost:5001/api/comments/${id}`, {
+            const resp = await fetch(`http://localhost:5001/api/comments`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${localStorage.getItem('token')}`,
                 },
-                body: JSON.stringify({ content: comment }),
+                body: JSON.stringify({ template_id: id, content: commentContent }),
             });
             if (!resp.ok) throw new Error('Failed to add comment');
             const newComment = await resp.json();
-            setComments((prevComments) => [...prevComments, newComment]);
+            setComments((prevComments) => [newComment, ...prevComments]);
+            setCommentContent(''); // Clear the input field
         } catch (err) {
             console.error(err.message);
+            setError(err.message);
         }
     };
 
     if (error) {
-        return <div>Error: {error}</div>;
+        return <div style={{ color: 'red' }}>Error: {error}</div>;
     }
 
     if (!template) {
@@ -76,30 +105,33 @@ function TemplateDetails() {
         <div>
             <h1>{template.title}</h1>
             <p>{template.description}</p>
-            <p>Tags: {template.Tags?.map((tag) => tag.name).join(', ')}</p>
+            <p>
+                Tags: {template.Tags?.length > 0 ? template.Tags.map((tag) => tag.name).join(', ') : 'No tags'}
+            </p>
             <p>Likes: {likes}</p>
-            <button onClick={handleLike}>Like</button>
+            <button onClick={handleLike} disabled={likeDisabled}>
+                {likeDisabled ? 'Liking...' : 'Like'}
+            </button>
 
             <h3>Comments</h3>
             <ul>
                 {comments.map((comment) => (
                     <li key={comment.id}>
-                        <strong>User {comment.user_id}:</strong> {comment.content}
+                        <strong>{comment.User?.username || 'Anonymous'}:</strong> {comment.content}
                     </li>
                 ))}
             </ul>
 
-            <div>
+            <div style={{ marginTop: '20px' }}>
                 <textarea
                     placeholder="Add a comment"
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleAddComment(e.target.value);
-                            e.target.value = '';
-                        }
-                    }}
+                    value={commentContent}
+                    onChange={(e) => setCommentContent(e.target.value)}
+                    style={{ width: '100%', height: '100px' }}
                 />
+                <button onClick={handleAddComment} style={{ marginTop: '10px' }}>
+                    Submit Comment
+                </button>
             </div>
         </div>
     );
