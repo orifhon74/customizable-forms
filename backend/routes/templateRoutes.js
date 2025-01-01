@@ -39,14 +39,17 @@ router.get('/latest', async (req, res) => {
     try {
         const templates = await Template.findAll({
             where: { access_type: 'public' },
+            order: [['createdAt', 'DESC']], // Order by creation date
+            limit: 6, // Limit the number of results
+            subQuery: false,
             include: [
                 {
                     model: Like,
-                    attributes: [], // Exclude raw Like data
+                    attributes: [], // No need to include individual likes
                 },
                 {
                     model: Tag,
-                    attributes: ['id', 'name'], // Include tag details
+                    attributes: ['id', 'name'],
                     through: { attributes: [] },
                 },
             ],
@@ -56,17 +59,18 @@ router.get('/latest', async (req, res) => {
                 'description',
                 'image_url',
                 'user_id',
-                [sequelize.fn('COUNT', sequelize.col('Likes.id')), 'likeCount'], // Aggregate likes
+                [
+                    sequelize.fn('COUNT', sequelize.col('Likes.id')),
+                    'likeCount', // Aggregate likes for each template
+                ],
             ],
             group: ['Template.id', 'Tags.id'], // Group by template ID and tag ID
-            order: [['createdAt', 'DESC']], // Order by creation date
-            limit: 6, // Fetch only the latest 6 templates
         });
 
         res.json(templates);
     } catch (err) {
-        console.error('Error fetching latest templates:', err.message);
-        res.status(500).json({ error: 'Failed to fetch latest templates' });
+        console.error('Error fetching public templates:', err.message);
+        res.status(500).json({ error: 'Failed to fetch public templates' });
     }
 });
 
@@ -98,7 +102,8 @@ router.get('/top', async (req, res) => {
             ],
             group: ['Template.id'], // Group by template ID
             order: [[sequelize.literal('forms_count'), 'DESC']], // Order by forms count
-            limit: 5, // Fetch top 5 templates
+            limit: 5, // Limit the number of results
+            subQuery: false,
         });
 
         res.json(templates);

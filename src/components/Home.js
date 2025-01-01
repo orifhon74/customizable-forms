@@ -43,7 +43,7 @@ function Home() {
         navigate(`/search-results?q=${tagName}`);
     };
 
-    const handleLike = async (templateId) => {
+    const handleLike = async (templateId, isFromLatest) => {
         if (!isAuthenticated) {
             setError('You must be logged in to like a template');
             return;
@@ -60,12 +60,25 @@ function Home() {
                 body: JSON.stringify({ template_id: templateId }),
             });
             if (!response.ok) throw new Error('Failed to like template');
-            const updatedTemplates = templates.map((template) =>
-                template.id === templateId
-                    ? { ...template, likeCount: (template.likeCount || 0) + 1 }
-                    : template
-            );
-            setTemplates(updatedTemplates);
+
+            // Update the likes count in the state
+            if (isFromLatest) {
+                setLatestTemplates((prevTemplates) =>
+                    prevTemplates.map((template) =>
+                        template.id === templateId
+                            ? { ...template, likeCount: (template.likeCount || 0) + 1 }
+                            : template
+                    )
+                );
+            } else {
+                setTopTemplates((prevTemplates) =>
+                    prevTemplates.map((template) =>
+                        template.id === templateId
+                            ? { ...template, likeCount: (template.likeCount || 0) + 1 }
+                            : template
+                    )
+                );
+            }
         } catch (err) {
             setError(err.message);
         }
@@ -102,9 +115,8 @@ function Home() {
                                 <strong>Author:</strong> {template.user_id}
                             </p>
                             <p>Likes: {template.likeCount || 0}</p>
-                            <button onClick={() => handleLike(template.id)}>Like</button>
+                            <button onClick={() => handleLike(template.id, true)}>Like</button>
                             <button
-                                className="btn btn-primary"
                                 onClick={() => navigate(`/templates/${template.id}`)}
                             >
                                 View Details
@@ -133,14 +145,14 @@ function Home() {
                                 <img
                                     src={template.image_url}
                                     alt={template.title}
-                                    style={{ width: '100%', height: '150px', objectFit: 'cover' }}
+                                    style={{width: '100%', height: '150px', objectFit: 'cover'}}
                                 />
                             )}
                             <p>
                                 <strong>Forms Filled:</strong> {template.forms_count}
                             </p>
                             <p>Likes: {template.likeCount || 0}</p>
-                            <button onClick={() => handleLike(template.id)}>Like</button>
+                            <button onClick={() => handleLike(template.id, false)}>Like</button>
                             <Link to={`/templates/${template.id}`}>
                                 <button>View Details</button>
                             </Link>
