@@ -167,12 +167,9 @@ function Templates() {
                                     <Card
                                         className="shadow-sm"
                                         style={{
-                                            backgroundColor:
-                                                theme === 'dark' ? '#343a40' : '#fff',
+                                            backgroundColor: theme === 'dark' ? '#343a40' : '#fff',
                                             color: theme === 'dark' ? '#fff' : '#000',
-                                            border: theme === 'dark'
-                                                ? '1px solid #495057'
-                                                : '1px solid #dee2e6',
+                                            border: theme === 'dark' ? '1px solid #495057' : '1px solid #dee2e6',
                                         }}
                                     >
                                         {template.image_url ? (
@@ -183,10 +180,7 @@ function Templates() {
                                                 style={{
                                                     height: '150px',
                                                     objectFit: 'cover',
-                                                    backgroundColor:
-                                                        theme === 'dark'
-                                                            ? '#495057'
-                                                            : '#f8f9fa',
+                                                    backgroundColor: theme === 'dark' ? '#495057' : '#f8f9fa',
                                                 }}
                                             />
                                         ) : (
@@ -194,14 +188,8 @@ function Templates() {
                                                 className="d-flex align-items-center justify-content-center"
                                                 style={{
                                                     height: '150px',
-                                                    backgroundColor:
-                                                        theme === 'dark'
-                                                            ? '#495057'
-                                                            : '#f8f9fa',
-                                                    color:
-                                                        theme === 'dark'
-                                                            ? '#adb5bd'
-                                                            : '#6c757d',
+                                                    backgroundColor: theme === 'dark' ? '#495057' : '#f8f9fa',
+                                                    color: theme === 'dark' ? '#adb5bd' : '#6c757d',
                                                     fontStyle: 'italic',
                                                 }}
                                             >
@@ -210,45 +198,23 @@ function Templates() {
                                         )}
                                         <Card.Body>
                                             <Card.Title>{template.title}</Card.Title>
-                                            <Card.Text className="text-truncate">
-                                                {template.description}
-                                            </Card.Text>
+                                            <Card.Text className="text-truncate">{template.description}</Card.Text>
                                             <div className="d-flex justify-content-between">
                                                 <Button
-                                                    variant={
-                                                        theme === 'dark'
-                                                            ? 'outline-light'
-                                                            : 'primary'
-                                                    }
-                                                    onClick={() =>
-                                                        navigate(
-                                                            `/template/${template.id}`
-                                                        )
-                                                    }
+                                                    variant={theme === 'dark' ? 'outline-light' : 'primary'}
+                                                    onClick={() => navigate(`/template/${template.id}`)}
                                                 >
                                                     View Details
                                                 </Button>
                                                 <Button
-                                                    variant={
-                                                        theme === 'dark'
-                                                            ? 'outline-light'
-                                                            : 'outline-secondary'
-                                                    }
-                                                    onClick={() =>
-                                                        handleEditTemplate(
-                                                            template.id
-                                                        )
-                                                    }
+                                                    variant={theme === 'dark' ? 'outline-light' : 'outline-secondary'}
+                                                    onClick={() => handleEditTemplate(template.id)}
                                                 >
                                                     Edit
                                                 </Button>
                                                 <Button
                                                     variant="danger"
-                                                    onClick={() =>
-                                                        handleDeleteTemplate(
-                                                            template.id
-                                                        )
-                                                    }
+                                                    onClick={() => handleDeleteTemplate(template.id)}
                                                 >
                                                     Delete
                                                 </Button>
@@ -264,12 +230,9 @@ function Templates() {
                 <Card
                     className="p-4 shadow-sm"
                     style={{
-                        backgroundColor:
-                            theme === 'dark' ? '#343a40' : '#fff',
+                        backgroundColor: theme === 'dark' ? '#343a40' : '#fff',
                         color: theme === 'dark' ? '#fff' : '#000',
-                        border: theme === 'dark'
-                            ? '1px solid #495057'
-                            : '1px solid #dee2e6',
+                        border: theme === 'dark' ? '1px solid #495057' : '1px solid #dee2e6',
                     }}
                 >
                     <Card.Body>
@@ -278,84 +241,79 @@ function Templates() {
                         <p>
                             <strong>Access Type:</strong> {selectedTemplate.access_type}
                         </p>
-                        <div className="mb-3">
-                            {(isAdmin || user?.id === selectedTemplate.user_id) && (
-                                <>
-                                    <Button
-                                        variant={
-                                            theme === 'dark'
-                                                ? 'outline-light'
-                                                : 'outline-secondary'
-                                        }
-                                        className="me-2"
-                                        onClick={() =>
-                                            handleEditTemplate(selectedTemplate.id)
-                                        }
-                                    >
-                                        Edit Template
-                                    </Button>
-                                    <Button
-                                        variant="danger"
-                                        onClick={() =>
-                                            handleDeleteTemplate(selectedTemplate.id)
-                                        }
-                                    >
-                                        Delete Template
-                                    </Button>
-                                </>
-                            )}
-                            <Button
-                                variant={
-                                    theme === 'dark'
-                                        ? 'outline-primary'
-                                        : 'outline-secondary'
-                                }
-                                onClick={() => navigate('/templates')}
-                            >
-                                Back to Templates
-                            </Button>
-                        </div>
+                        {(isAdmin || user?.id === selectedTemplate.user_id) && (
+                            <div className="mb-3">
+                                <Button
+                                    variant={theme === 'dark' ? 'outline-light' : 'outline-secondary'}
+                                    className="me-2"
+                                    onClick={() => handleEditTemplate(selectedTemplate.id)}
+                                >
+                                    Edit Template
+                                </Button>
+                                <Button
+                                    variant="danger"
+                                    onClick={() => handleDeleteTemplate(selectedTemplate.id)}
+                                >
+                                    Delete Template
+                                </Button>
+                            </div>
+                        )}
+                        <Button
+                            variant={theme === 'dark' ? 'outline-primary' : 'outline-secondary'}
+                            className="mb-3"
+                            onClick={() => navigate('/templates')}
+                        >
+                            Back to Templates
+                        </Button>
                         <h2>Statistics</h2>
                         {stats ? (
                             <div>
                                 <p>
-                                    <strong>Total Forms Submitted:</strong>{' '}
-                                    {stats.total_forms || 0}
+                                    <strong>Total Forms Submitted:</strong> {stats.total_forms || 0}
                                 </p>
-                                <h4>Averages</h4>
+                                <h4>Averages:</h4>
                                 <ListGroup>
-                                    {Object.entries(stats.averages).map(
-                                        ([key, value]) => (
-                                            <ListGroup.Item
-                                                key={key}
-                                                style={{
-                                                    backgroundColor:
-                                                        theme === 'dark'
-                                                            ? '#495057'
-                                                            : '#fff',
-                                                    color:
-                                                        theme === 'dark'
-                                                            ? '#fff'
-                                                            : '#000',
-                                                }}
-                                            >
-                                                {key.replace('_answer', '')}: {value.toFixed(2)}
-                                            </ListGroup.Item>
-                                        )
-                                    )}
+                                    {stats.averages &&
+                                        Object.entries(stats.averages)
+                                            .filter(([key]) => selectedTemplate[key.replace('_answer', '_question')])
+                                            .map(([key, value]) => (
+                                                <ListGroup.Item
+                                                    key={key}
+                                                    style={{
+                                                        backgroundColor: theme === 'dark' ? '#495057' : '#fff',
+                                                        color: theme === 'dark' ? '#fff' : '#000',
+                                                    }}
+                                                >
+                                                    <strong>{selectedTemplate[key.replace('_answer', '_question')]}:</strong>{' '}
+                                                    {value.toFixed(2)}
+                                                </ListGroup.Item>
+                                            ))}
+                                </ListGroup>
+                                <h4>Most Common Answers:</h4>
+                                <ListGroup>
+                                    {stats.commonStrings &&
+                                        Object.entries(stats.commonStrings)
+                                            .filter(([key]) => selectedTemplate[key.replace('_answer', '_question')])
+                                            .map(([key, value]) => (
+                                                <ListGroup.Item
+                                                    key={key}
+                                                    style={{
+                                                        backgroundColor: theme === 'dark' ? '#495057' : '#fff',
+                                                        color: theme === 'dark' ? '#fff' : '#000',
+                                                    }}
+                                                >
+                                                    <strong>{selectedTemplate[key.replace('_answer', '_question')]}:</strong>{' '}
+                                                    {value || 'None'}
+                                                </ListGroup.Item>
+                                            ))}
                                 </ListGroup>
                             </div>
                         ) : (
                             <Spinner animation="border" />
                         )}
-
                         <h2>Submitted Forms</h2>
                         {forms.length === 0 ? (
-                            <Alert
-                                variant={theme === 'dark' ? 'dark' : 'info'}
-                            >
-                                No forms have been submitted yet.
-                            </Alert>
+                            <Alert variant={theme === 'dark' ? 'dark' : 'info'}>No forms have been submitted yet.</Alert>
                         ) : (
                             <ListGroup>
                                 {forms.map((form) => (
@@ -369,52 +327,22 @@ function Templates() {
                                         <p>
                                             <strong>Submitted by User ID:</strong> {form.user_id}
                                         </p>
-                                        <p>
-                                            <strong>Answers:</strong>
-                                        </p>
                                         <ul>
                                             {Object.keys(form)
-                                                .filter((key) => key.includes('_answer') && form[key]) // Ensure the answer exists
-                                                .map((key) => {
-                                                    if (!selectedTemplate) {
-                                                        console.error(
-                                                            `selectedTemplate is null or undefined for form:`,
-                                                            form
-                                                        );
-                                                        return null;
-                                                    }
-
-                                                    const questionKey = key.replace('_answer', '_question');
-                                                    const question = selectedTemplate[questionKey];
-
-                                                    if (!question) {
-                                                        console.warn(
-                                                            `Question for key "${questionKey}" not found in selectedTemplate:`,
-                                                            selectedTemplate
-                                                        );
-                                                        return null;
-                                                    }
-
-                                                    return (
-                                                        <li key={key}>
-                                                            <strong>{question}:</strong>{' '}
-                                                            {typeof form[key] === 'boolean'
-                                                                ? form[key]
-                                                                    ? 'Yes'
-                                                                    : 'No'
-                                                                : form[key]}
-                                                        </li>
-                                                    );
-                                                })}
+                                                .filter((key) => key.includes('_answer') && form[key])
+                                                .map((key) => (
+                                                    <li key={key}>
+                                                        <strong>
+                                                            {selectedTemplate[key.replace('_answer', '_question')] || key.replace('_answer', '')}:
+                                                        </strong>{' '}
+                                                        {typeof form[key] === 'boolean' ? (form[key] ? 'Yes' : 'No') : form[key]}
+                                                    </li>
+                                                ))}
                                         </ul>
-                                        {(isAdmin || user?.id === selectedTemplate?.user_id) && (
-                                            <div className="mt-2 d-flex">
+                                        {(isAdmin || user?.id === selectedTemplate.user_id) && (
+                                            <div className="mt-3">
                                                 <Button
-                                                    variant={
-                                                        theme === 'dark'
-                                                            ? 'outline-light'
-                                                            : 'outline-secondary'
-                                                    }
+                                                    variant={theme === 'dark' ? 'outline-light' : 'outline-secondary'}
                                                     className="me-2"
                                                     onClick={() => handleEditForm(form.id)}
                                                 >
