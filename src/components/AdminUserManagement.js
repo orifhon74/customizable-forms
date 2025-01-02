@@ -1,9 +1,10 @@
-// src/components/AdminUserManagement.js
 import React, { useEffect, useState } from 'react';
+import { Container, Table, Button, Alert, Spinner } from 'react-bootstrap';
 
 function AdminUserManagement() {
     const [users, setUsers] = useState([]);
     const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     const API_URL = process.env.REACT_APP_API_URL;
 
@@ -12,6 +13,7 @@ function AdminUserManagement() {
     }, []);
 
     const fetchUsers = async () => {
+        setLoading(true);
         const token = localStorage.getItem('token');
         try {
             const response = await fetch(`${API_URL}/api/users`, {
@@ -24,6 +26,8 @@ function AdminUserManagement() {
             setUsers(data);
         } catch (err) {
             setError(err.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -79,44 +83,75 @@ function AdminUserManagement() {
         }
     };
 
-    if (error) return <div>Error: {error}</div>;
+    if (error) {
+        return (
+            <Container className="mt-4">
+                <Alert variant="danger">Error: {error}</Alert>
+            </Container>
+        );
+    }
 
     return (
-        <div style={{ margin: '20px' }}>
-            <h1>Admin User Management</h1>
-            <table>
-                <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-                </thead>
-                <tbody>
-                {users.map((user) => (
-                    <tr key={user.id}>
-                        <td>{user.id}</td>
-                        <td>{user.username}</td>
-                        <td>{user.email}</td>
-                        <td>{user.role}</td>
-                        <td>{user.deletedAt ? 'Blocked' : 'Active'}</td>
-                        <td>
-                            <button onClick={() => updateUserRole(user.id, user.role === 'admin' ? 'user' : 'admin')}>
-                                {user.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
-                            </button>
-                            <button onClick={() => toggleBlockUser(user.id)}>
-                                {user.deletedAt ? 'Unblock' : 'Block'}
-                            </button>
-                            <button onClick={() => deleteUser(user.id)}>Delete</button>
-                        </td>
+        <Container className="mt-4">
+            <h1 className="text-center mb-4">Admin User Management</h1>
+            {loading ? (
+                <div className="text-center">
+                    <Spinner animation="border" />
+                    <p>Loading users...</p>
+                </div>
+            ) : (
+                <Table responsive bordered hover className="shadow-sm table-dark">
+                    <thead className="table-light text-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                     </tr>
-                ))}
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody>
+                    {users.map((user) => (
+                        <tr key={user.id}>
+                            <td>{user.id}</td>
+                            <td>{user.username}</td>
+                            <td>{user.email}</td>
+                            <td>{user.role}</td>
+                            <td>{user.deletedAt ? 'Blocked' : 'Active'}</td>
+                            <td>
+                                <Button
+                                    variant={user.role === 'admin' ? 'warning' : 'success'}
+                                    size="sm"
+                                    onClick={() =>
+                                        updateUserRole(user.id, user.role === 'admin' ? 'user' : 'admin')
+                                    }
+                                    className="me-2"
+                                >
+                                    {user.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
+                                </Button>
+                                <Button
+                                    variant={user.deletedAt ? 'success' : 'danger'}
+                                    size="sm"
+                                    onClick={() => toggleBlockUser(user.id)}
+                                    className="me-2"
+                                >
+                                    {user.deletedAt ? 'Unblock' : 'Block'}
+                                </Button>
+                                <Button
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() => deleteUser(user.id)}
+                                >
+                                    Delete
+                                </Button>
+                            </td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </Table>
+            )}
+        </Container>
     );
 }
 

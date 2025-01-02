@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { Container, Row, Col, Card, Button, Alert } from 'react-bootstrap';
+
 
 function SearchResults() {
     const location = useLocation();
@@ -41,42 +43,43 @@ function SearchResults() {
     if (error) return <div style={{ color: 'red' }}>{error}</div>;
 
     return (
-        <div>
-            <h2>Search Results </h2>
+        <Container className="my-4">
+            <h2 className="text-center mb-4">
+                Search Results {searchType === 'tag' ? `for Tag ID: ${searchQuery}` : `for: "${searchQuery}"`}
+            </h2>
             {results.length === 0 ? (
-                <p>No results found.</p>
+                <Alert variant="info">No results found.</Alert>
             ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
+                <Row xs={1} md={2} lg={3} className="g-4">
                     {results.map((template) => (
-                        <div
-                            key={template.id}
-                            style={{
-                                border: '1px solid #ccc',
-                                padding: '20px',
-                                borderRadius: '8px',
-                                width: '250px',
-                            }}
-                        >
-                            <h3>{template.title}</h3>
-                            <p>{template.description}</p>
-                            <button
-                                onClick={() => window.location.href = `/templates/${template.id}`}
-                                style={{
-                                    backgroundColor: '#007bff',
-                                    color: '#fff',
-                                    border: 'none',
-                                    padding: '10px',
-                                    borderRadius: '5px',
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                View Details
-                            </button>
-                        </div>
+                        <Col key={template.id}>
+                            <Card className="shadow-sm">
+                                {template.image_url && (
+                                    <Card.Img
+                                        variant="top"
+                                        src={template.image_url}
+                                        alt={template.title}
+                                        style={{ height: '150px', objectFit: 'cover' }}
+                                    />
+                                )}
+                                <Card.Body>
+                                    <Card.Title>{template.title}</Card.Title>
+                                    <Card.Text>{template.description}</Card.Text>
+                                    <div className="d-flex justify-content-center">
+                                        <Button
+                                            variant="primary"
+                                            onClick={() => navigate(`/templates/${template.id}`)}
+                                        >
+                                            View Details
+                                        </Button>
+                                    </div>
+                                </Card.Body>
+                            </Card>
+                        </Col>
                     ))}
-                </div>
+                </Row>
             )}
-        </div>
+        </Container>
     );
 }
 

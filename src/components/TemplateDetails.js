@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { Container, Row, Col, Card, Button, Alert, Form, Spinner, Badge, ListGroup } from 'react-bootstrap';
+
 
 function TemplateDetails() {
     const { id } = useParams();
@@ -104,80 +106,127 @@ function TemplateDetails() {
     }
 
     return (
-        <div>
-            <h1>{template.title}</h1>
-            <p>{template.description}</p>
-            <p>
-                <strong>Tags:</strong> {template.Tags?.length > 0 ? template.Tags.map((tag) => tag.name).join(', ') : 'No tags'}
-            </p>
-            <p>Likes: {likes}</p>
-            <button onClick={handleLike} disabled={likeDisabled}>
-                {likeDisabled ? 'Liking...' : 'Like'}
-            </button>
+        <Container className="my-4">
+            <Row>
+                <Col md={8}>
+                    <Card className="shadow-sm mb-4">
+                        <Card.Body>
+                            <Card.Title>{template.title}</Card.Title>
+                            <Card.Text>{template.description}</Card.Text>
+                            <div className="mb-3">
+                                <strong>Tags: </strong>
+                                {template.Tags?.length > 0 ? (
+                                    template.Tags.map((tag) => (
+                                        <Badge key={tag.id} bg="secondary" className="me-1">
+                                            {tag.name}
+                                        </Badge>
+                                    ))
+                                ) : (
+                                    'No tags'
+                                )}
+                            </div>
+                            <div className="d-flex align-items-center">
+                                <Button
+                                    variant="primary"
+                                    onClick={handleLike}
+                                    disabled={likeDisabled}
+                                    className="me-3"
+                                >
+                                    {likeDisabled ? 'Liking...' : 'Like'}
+                                </Button>
+                                <span>Likes: {likes}</span>
+                            </div>
+                        </Card.Body>
+                    </Card>
 
-            <h3>Questions: </h3>
-            <div>
-                <h4>String Questions</h4>
-                <ul>
-                    {Array.from({length: 4}).map((_, index) => {
-                        const question = template[`custom_string${index + 1}_question`];
-                        const state = template[`custom_string${index + 1}_state`];
-                        return state && question ? <li key={index}>{question}</li> : null;
-                    })}
-                </ul>
+                    <Card className="shadow-sm">
+                        <Card.Body>
+                            <Card.Title>Questions</Card.Title>
+                            <ListGroup variant="flush">
+                                <ListGroup.Item>
+                                    <strong>String Questions</strong>
+                                    <ul>
+                                        {Array.from({ length: 4 }).map((_, index) => {
+                                            const question = template[`custom_string${index + 1}_question`];
+                                            const state = template[`custom_string${index + 1}_state`];
+                                            return state && question ? (
+                                                <li key={index}>{question}</li>
+                                            ) : null;
+                                        })}
+                                    </ul>
+                                </ListGroup.Item>
+                                <ListGroup.Item>
+                                    <strong>Multiline Questions</strong>
+                                    <ul>
+                                        {Array.from({ length: 4 }).map((_, index) => {
+                                            const question = template[`custom_multiline${index + 1}_question`];
+                                            const state = template[`custom_multiline${index + 1}_state`];
+                                            return state && question ? (
+                                                <li key={index}>{question}</li>
+                                            ) : null;
+                                        })}
+                                    </ul>
+                                </ListGroup.Item>
+                                <ListGroup.Item>
+                                    <strong>Integer Questions</strong>
+                                    <ul>
+                                        {Array.from({ length: 4 }).map((_, index) => {
+                                            const question = template[`custom_int${index + 1}_question`];
+                                            const state = template[`custom_int${index + 1}_state`];
+                                            return state && question ? (
+                                                <li key={index}>{question}</li>
+                                            ) : null;
+                                        })}
+                                    </ul>
+                                </ListGroup.Item>
+                                <ListGroup.Item>
+                                    <strong>Checkbox Questions</strong>
+                                    <ul>
+                                        {Array.from({ length: 4 }).map((_, index) => {
+                                            const question = template[`custom_checkbox${index + 1}_question`];
+                                            const state = template[`custom_checkbox${index + 1}_state`];
+                                            return state && question ? (
+                                                <li key={index}>{question}</li>
+                                            ) : null;
+                                        })}
+                                    </ul>
+                                </ListGroup.Item>
+                            </ListGroup>
+                        </Card.Body>
+                    </Card>
+                </Col>
 
-                <h4>Multiline Questions</h4>
-                <ul>
-                    {Array.from({length: 4}).map((_, index) => {
-                        const question = template[`custom_multiline${index + 1}_question`];
-                        const state = template[`custom_multiline${index + 1}_state`];
-                        return state && question ? <li key={index}>{question}</li> : null;
-                    })}
-                </ul>
-
-                <h4>Integer Questions</h4>
-                <ul>
-                    {Array.from({length: 4}).map((_, index) => {
-                        const question = template[`custom_int${index + 1}_question`];
-                        const state = template[`custom_int${index + 1}_state`];
-                        return state && question ? <li key={index}>{question}</li> : null;
-                    })}
-                </ul>
-
-                <h4>Checkbox Questions</h4>
-                <ul>
-                    {Array.from({length: 4}).map((_, index) => {
-                        const question = template[`custom_checkbox${index + 1}_question`];
-                        const state = template[`custom_checkbox${index + 1}_state`];
-                        return state && question ? <li key={index}>{question}</li> : null;
-                    })}
-                </ul>
-            </div>
-
-            {/*/!* Add TemplateStats *!/*/}
-            {/*<TemplateStats templateId={id} />*/}
-
-            <h3>Comments: </h3>
-            <ul>
-                {comments.map((comment) => (
-                    <li key={comment.id}>
-                        <strong>{comment.User?.username || 'Anonymous'}:</strong> {comment.content}
-                    </li>
-                ))}
-            </ul>
-
-            <div style={{marginTop: '20px'}}>
-                <textarea
-                    placeholder="Add a comment"
-                    value={commentContent}
-                    onChange={(e) => setCommentContent(e.target.value)}
-                    style={{width: '100%', height: '100px'}}
-                />
-                <button onClick={handleAddComment} style={{marginTop: '10px'}}>
-                    Submit Comment
-                </button>
-            </div>
-        </div>
+                <Col md={4}>
+                    <Card className="shadow-sm mb-4">
+                        <Card.Body>
+                            <Card.Title>Comments</Card.Title>
+                            <ListGroup variant="flush" className="mb-3">
+                                {comments.map((comment) => (
+                                    <ListGroup.Item key={comment.id}>
+                                        <strong>{comment.User?.username || 'Anonymous'}:</strong>{' '}
+                                        {comment.content}
+                                    </ListGroup.Item>
+                                ))}
+                            </ListGroup>
+                            <Form>
+                                <Form.Group controlId="formComment" className="mb-3">
+                                    <Form.Control
+                                        as="textarea"
+                                        rows={3}
+                                        placeholder="Add a comment"
+                                        value={commentContent}
+                                        onChange={(e) => setCommentContent(e.target.value)}
+                                    />
+                                </Form.Group>
+                                <Button variant="primary" onClick={handleAddComment}>
+                                    Submit Comment
+                                </Button>
+                            </Form>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+        </Container>
     );
 }
 

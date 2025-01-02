@@ -1,5 +1,7 @@
 // src/components/UserDashboard.js
 import React, { useState, useEffect } from 'react';
+import { Container, Row, Col, Card, Alert, Spinner } from 'react-bootstrap';
+
 
 function UserDashboard() {
     const [templates, setTemplates] = useState([]);
@@ -42,24 +44,56 @@ function UserDashboard() {
     }, []);
 
     return (
-        <div style={{ margin: '20px' }}>
-            <h1>User Dashboard</h1>
-            {error && <p style={{ color: 'red' }}>{error}</p>}
+        <Container className="my-4">
+            <h1 className="text-center mb-5">User Dashboard</h1>
+            {error && <Alert variant="danger">{error}</Alert>}
 
-            <h2>Your Templates</h2>
-            <ul>
-                {templates.map((template) => (
-                    <li key={template.id}>{template.title}</li>
-                ))}
-            </ul>
+            <Row className="mb-5">
+                <Col>
+                    <h2>Your Templates</h2>
+                    {templates.length === 0 ? (
+                        <Alert variant="info">You have not created any templates yet.</Alert>
+                    ) : (
+                        <Row xs={1} md={2} lg={3} className="g-4">
+                            {templates.map((template) => (
+                                <Col key={template.id}>
+                                    <Card className="shadow-sm">
+                                        <Card.Body>
+                                            <Card.Title>{template.title}</Card.Title>
+                                            <Card.Text>{template.description || 'No description available'}</Card.Text>
+                                        </Card.Body>
+                                    </Card>
+                                </Col>
+                            ))}
+                        </Row>
+                    )}
+                </Col>
+            </Row>
 
-            <h2>Your Forms</h2>
-            <ul>
-                {forms.map((form) => (
-                    <li key={form.id}>Form ID: {form.id}</li>
-                ))}
-            </ul>
-        </div>
+            <Row>
+                <Col>
+                    <h2>Your Forms</h2>
+                    {forms.length === 0 ? (
+                        <Alert variant="info">You have not submitted any forms yet.</Alert>
+                    ) : (
+                        <Row xs={1} md={2} lg={3} className="g-4">
+                            {forms.map((form) => (
+                                <Col key={form.id}>
+                                    <Card className="shadow-sm">
+                                        <Card.Body>
+                                            <Card.Title>Form ID: {form.id}</Card.Title>
+                                            <Card.Text>
+                                                Submitted on: {new Date(form.createdAt).toLocaleDateString()}
+                                            </Card.Text>
+                                        </Card.Body>
+                                    </Card>
+                                </Col>
+                            ))}
+                        </Row>
+                    )}
+                </Col>
+            </Row>
+        </Container>
     );
 }
 

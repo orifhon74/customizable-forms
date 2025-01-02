@@ -1,6 +1,6 @@
-// src/components/Login.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Container, Form, Button, Alert, Card } from 'react-bootstrap';
 
 function Login({ setIsAuthenticated, setUserRole }) {
     const [email, setEmail] = useState('');
@@ -19,7 +19,7 @@ function Login({ setIsAuthenticated, setUserRole }) {
                 body: JSON.stringify({ email, password }),
             });
             if (!response.ok) {
-                throw new Error('Invalid credentials');
+                throw new Error('Invalid credentials. Please try again.');
             }
             const data = await response.json();
             localStorage.setItem('token', data.token);
@@ -34,31 +34,53 @@ function Login({ setIsAuthenticated, setUserRole }) {
     };
 
     return (
-        <div style={{ margin: '20px' }}>
-            <h1>Login</h1>
-            {error && <p style={{ color: 'red' }}>{error}</p>}
-            <form onSubmit={handleSubmit}>
-                <div>
-                    <label>Email:</label>
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                    />
-                </div>
-                <div>
-                    <label>Password:</label>
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                    />
-                </div>
-                <button type="submit">Login</button>
-            </form>
-        </div>
+        <Container
+            className="d-flex justify-content-center align-items-center vh-100"
+            style={{
+                backgroundColor: 'var(--bs-body-bg)',
+                color: 'var(--bs-body-color)',
+            }}
+        >
+            <Card
+                className="shadow-lg p-4"
+                style={{
+                    width: '100%',
+                    maxWidth: '400px',
+                    backgroundColor: 'var(--bs-card-bg)',
+                    color: 'var(--bs-body-color)',
+                }}
+            >
+                <Card.Body>
+                    <h1 className="text-center mb-4">Sign In</h1>
+                    {error && <Alert variant="danger">{error}</Alert>}
+                    <Form onSubmit={handleSubmit}>
+                        <Form.Group className="mb-3" controlId="formEmail">
+                            <Form.Label>Email</Form.Label>
+                            <Form.Control
+                                type="email"
+                                placeholder="Enter your email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                            />
+                        </Form.Group>
+                        <Form.Group className="mb-3" controlId="formPassword">
+                            <Form.Label>Password</Form.Label>
+                            <Form.Control
+                                type="password"
+                                placeholder="Enter your password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                            />
+                        </Form.Group>
+                        <Button type="submit" className="w-100" variant="primary">
+                            Sign In
+                        </Button>
+                    </Form>
+                </Card.Body>
+            </Card>
+        </Container>
     );
 }
 

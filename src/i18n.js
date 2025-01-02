@@ -1,9 +1,9 @@
 const translations = {
     en: {
         appTitle: "Customizable Forms",
-        login: "Login",
-        register: "Register",
-        logout: "Logout",
+        login: "Sign In",
+        register: "Sign Up",
+        logout: "Sign Out",
         admin: "Admin",
         userManagement: "User Management",
         publicTemplates: "Public Templates",

@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, {useContext, useEffect, useState} from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import TagCloud from "./TagCloud";
+import { Container, Row, Col, Card, Button, Badge, Alert } from 'react-bootstrap';
+import { ThemeContext } from '../context/ThemeContext';
+
 
 function Home() {
     const [latestTemplates, setLatestTemplates] = useState([]);
@@ -12,8 +14,9 @@ function Home() {
     const isAuthenticated = !!localStorage.getItem('token');
 
     const navigate = useNavigate();
-
     const API_URL = process.env.REACT_APP_API_URL;
+
+    const { theme } = useContext(ThemeContext);
 
     useEffect(() => {
         const fetchHomeData = async () => {
@@ -88,104 +91,165 @@ function Home() {
     };
 
     return (
-        <div style={{ margin: '20px' }}>
-            <h1>Home</h1>
-            {error && <p style={{ color: 'red' }}>{error}</p>}
+        <Container className="my-4">
+            <h1 className="text-center mb-5">Welcome to Customizable Forms</h1>
+            {error && <Alert variant="danger">{error}</Alert>}
 
-            <section>
-                <h2>Latest Templates</h2>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-                    {latestTemplates.map((template) => (
-                        <div
-                            key={template.id}
-                            style={{
-                                border: '1px solid #ccc',
-                                padding: '10px',
-                                borderRadius: '5px',
-                                width: '250px',
-                            }}
-                        >
-                            <h3>{template.title}</h3>
-                            <p>{template.description}</p>
-                            {template.image_url && (
-                                <img
-                                    src={template.image_url}
-                                    alt={template.title}
-                                    style={{width: '100%', height: '150px', objectFit: 'cover'}}
-                                />
-                            )}
-                            <p>
-                                <strong>Author:</strong> {template.user_id}
-                            </p>
-                            <p>Likes: {template.likeCount || 0}</p>
-                            <button onClick={() => handleLike(template.id, true)}>Like</button>
-                            <button
-                                onClick={() => navigate(`/templates/${template.id}`)}
-                            >
-                                View Details
-                            </button>
-                        </div>
-                    ))}
-                </div>
+            {/* Latest Templates */}
+            <section className="mb-5">
+                <h2 className="mb-4 text-center">Latest Templates</h2>
+                {latestTemplates.length === 0 ? (
+                    <p className="text-center">No latest templates available.</p>
+                ) : (
+                    <Row xs={1} md={2} lg={3} className="g-4">
+                        {latestTemplates.map((template) => (
+                            <Col key={template.id}>
+                                <Card
+                                    className={`shadow-sm ${
+                                        theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark'
+                                    }`}
+                                    style={{ height: '100%' }}
+                                >
+                                    {template.image_url ? (
+                                        <Card.Img
+                                            variant="top"
+                                            src={template.image_url}
+                                            alt={template.title}
+                                            style={{ height: '150px', objectFit: 'cover' }}
+                                        />
+                                    ) : (
+                                        <div
+                                            style={{
+                                                height: '150px',
+                                                backgroundColor: theme === 'dark' ? '#343a40' : '#f8f9fa',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: '#6c757d',
+                                                fontStyle: 'italic',
+                                            }}
+                                        >
+                                            No Image
+                                        </div>
+                                    )}
+                                    <Card.Body style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <Card.Title>{template.title}</Card.Title>
+                                        <Card.Text className="text-truncate" style={{ maxHeight: '40px' }}>
+                                            {template.description}
+                                        </Card.Text>
+                                        <Card.Text>
+                                            <strong>Author:</strong> {template.user_id}
+                                        </Card.Text>
+                                        <Card.Text>
+                                            <strong>Likes:</strong> {template.likeCount || 0}
+                                        </Card.Text>
+                                        <div className="mt-auto d-flex justify-content-between">
+                                            <Button
+                                                variant="primary"
+                                                onClick={() => handleLike(template.id, true)}
+                                            >
+                                                Like
+                                            </Button>
+                                            <Button
+                                                variant="outline-secondary"
+                                                onClick={() => navigate(`/templates/${template.id}`)}
+                                            >
+                                                View Details
+                                            </Button>
+                                        </div>
+                                    </Card.Body>
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
+                )}
             </section>
 
-            <section>
-                <h2>Top 5 Most Popular</h2>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-                    {topTemplates.map((template) => (
-                        <div
-                            key={template.id}
-                            style={{
-                                border: '1px solid #ccc',
-                                padding: '10px',
-                                borderRadius: '5px',
-                                width: '250px',
-                            }}
-                        >
-                            <h3>{template.title}</h3>
-                            <p>{template.description}</p>
-                            {template.image_url && (
-                                <img
-                                    src={template.image_url}
-                                    alt={template.title}
-                                    style={{width: '100%', height: '150px', objectFit: 'cover'}}
-                                />
-                            )}
-                            <p>
-                                <strong>Forms Filled:</strong> {template.forms_count}
-                            </p>
-                            <p>Likes: {template.likeCount || 0}</p>
-                            <button onClick={() => handleLike(template.id, false)}>Like</button>
-                            <Link to={`/templates/${template.id}`}>
-                                <button>View Details</button>
-                            </Link>
-                        </div>
-                    ))}
-                </div>
+            {/* Top Templates */}
+            <section className="mb-5">
+                <h2 className="mb-4 text-center">Top 5 Most Popular Templates</h2>
+                {topTemplates.length === 0 ? (
+                    <p className="text-center">No top templates available.</p>
+                ) : (
+                    <Row xs={1} md={2} lg={3} className="g-4">
+                        {topTemplates.map((template) => (
+                            <Col key={template.id}>
+                                <Card
+                                    className={`shadow-sm ${
+                                        theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark'
+                                    }`}
+                                    style={{ height: '100%' }}
+                                >
+                                    {template.image_url ? (
+                                        <Card.Img
+                                            variant="top"
+                                            src={template.image_url}
+                                            alt={template.title}
+                                            style={{ height: '150px', objectFit: 'cover' }}
+                                        />
+                                    ) : (
+                                        <div
+                                            style={{
+                                                height: '150px',
+                                                backgroundColor: theme === 'dark' ? '#343a40' : '#f8f9fa',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: '#6c757d',
+                                                fontStyle: 'italic',
+                                            }}
+                                        >
+                                            No Image
+                                        </div>
+                                    )}
+                                    <Card.Body style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <Card.Title>{template.title}</Card.Title>
+                                        <Card.Text className="text-truncate" style={{ maxHeight: '40px' }}>
+                                            {template.description}
+                                        </Card.Text>
+                                        <Card.Text>
+                                            <strong>Forms Filled:</strong> {template.forms_count}
+                                        </Card.Text>
+                                        <Card.Text>
+                                            <strong>Likes:</strong> {template.likeCount || 0}
+                                        </Card.Text>
+                                        <div className="mt-auto d-flex justify-content-between">
+                                            <Button
+                                                variant="primary"
+                                                onClick={() => handleLike(template.id, false)}
+                                            >
+                                                Like
+                                            </Button>
+                                            <Link to={`/templates/${template.id}`}>
+                                                <Button variant="outline-secondary">View Details</Button>
+                                            </Link>
+                                        </div>
+                                    </Card.Body>
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
+                )}
             </section>
 
-            <section>
-                {/* Tag Cloud */}
-                <h2>Tag Cloud</h2>
-                <div>
+            {/* Tag Cloud */}
+            <section className="mb-5">
+                <h2 className="mb-4 text-center">Explore Tags</h2>
+                <div className="d-flex flex-wrap justify-content-center">
                     {tags.map((tag) => (
-                        <span
+                        <Badge
                             key={tag.id}
-                            style={{
-                                padding: '5px 10px',
-                                margin: '5px',
-                                backgroundColor: '#e0e0e0',
-                                borderRadius: '15px',
-                                cursor: 'pointer',
-                            }}
+                            bg={theme === 'dark' ? 'secondary' : 'primary'}
+                            className="m-1 p-2"
+                            style={{ cursor: 'pointer', fontSize: '1rem' }}
                             onClick={() => handleTagClick(tag.id)}
                         >
-                        {tag.name}
-                    </span>
+                            {tag.name}
+                        </Badge>
                     ))}
                 </div>
             </section>
-        </div>
+        </Container>
     );
 }
 

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Container, Row, Col, ListGroup, Button, Alert, Spinner } from 'react-bootstrap';
+
 
 function FormDetails() {
     const { formId } = useParams();
@@ -52,53 +54,80 @@ function FormDetails() {
         }
     };
 
-    if (error) return <h2 style={{ color: 'red' }}>Error: {error}</h2>;
-    if (!form) return <h2>Loading...</h2>;
+    if (error) {
+        return (
+            <Container className="mt-4">
+                <Alert variant="danger">Error: {error}</Alert>
+            </Container>
+        );
+    }
+
+    if (!form) {
+        return (
+            <Container className="d-flex justify-content-center align-items-center vh-100">
+                <Spinner animation="border" />
+                <p className="ms-3">Loading form details...</p>
+            </Container>
+        );
+    }
 
     return (
-        <div style={{ margin: '20px' }}>
-            <h1>Form Details</h1>
-            <p>
-                <strong>Template:</strong> {form.Template?.title || 'N/A'}
-            </p>
-            <p>
-                <strong>Submitted By:</strong> {form.User?.username || 'N/A'}
-            </p>
-            <p>
-                <strong>Date Submitted:</strong> {new Date(form.createdAt).toLocaleDateString()}
-            </p>
-            <h2>Answers</h2>
-            <ul>
-                {Object.keys(form)
-                    .filter((key) => key.includes('_answer') && form[key])
-                    .map((key) => {
-                        const questionKey = key.replace('_answer', '_question');
-                        const question = form.Template[questionKey];
-                        return (
-                            <li key={key}>
-                                <strong>{question || key.replace('_answer', '')}:</strong>{' '}
-                                {typeof form[key] === 'boolean'
-                                    ? form[key]
-                                        ? 'Yes'
-                                        : 'No'
-                                    : form[key]}
-                            </li>
-                        );
-                    })}
-            </ul>
+        <Container className="my-4">
+            <Row>
+                <Col>
+                    <h1 className="mb-4">Form Details</h1>
+                    <ListGroup variant="flush">
+                        <ListGroup.Item>
+                            <strong>Template:</strong> {form.Template?.title || 'N/A'}
+                        </ListGroup.Item>
+                        <ListGroup.Item>
+                            <strong>Submitted By:</strong> {form.User?.username || 'N/A'}
+                        </ListGroup.Item>
+                        <ListGroup.Item>
+                            <strong>Date Submitted:</strong> {new Date(form.createdAt).toLocaleDateString()}
+                        </ListGroup.Item>
+                    </ListGroup>
+                </Col>
+            </Row>
+
+            <Row className="mt-4">
+                <Col>
+                    <h2>Answers</h2>
+                    <ListGroup>
+                        {Object.keys(form)
+                            .filter((key) => key.includes('_answer') && form[key])
+                            .map((key) => {
+                                const questionKey = key.replace('_answer', '_question');
+                                const question = form.Template[questionKey];
+                                return (
+                                    <ListGroup.Item key={key}>
+                                        <strong>{question || key.replace('_answer', '')}:</strong>{' '}
+                                        {typeof form[key] === 'boolean'
+                                            ? form[key]
+                                                ? 'Yes'
+                                                : 'No'
+                                            : form[key]}
+                                    </ListGroup.Item>
+                                );
+                            })}
+                    </ListGroup>
+                </Col>
+            </Row>
 
             {/* Edit and Delete buttons for admins or the template owner */}
             {(isAdmin || user?.id === form.Template?.user_id) && (
-                <div style={{ marginTop: '20px' }}>
-                    <button onClick={handleEditForm} style={{ marginRight: '10px' }}>
-                        Edit Form
-                    </button>
-                    <button onClick={handleDeleteForm} style={{ backgroundColor: 'red', color: 'white' }}>
-                        Delete Form
-                    </button>
-                </div>
+                <Row className="mt-4">
+                    <Col className="d-flex justify-content-end">
+                        <Button variant="warning" className="me-3" onClick={handleEditForm}>
+                            Edit Form
+                        </Button>
+                        <Button variant="danger" onClick={handleDeleteForm}>
+                            Delete Form
+                        </Button>
+                    </Col>
+                </Row>
             )}
-        </div>
+        </Container>
     );
 }
 

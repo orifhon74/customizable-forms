@@ -1,6 +1,8 @@
 // src/components/FormSubmission.js
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { Container, Form, Button, Alert, Spinner } from 'react-bootstrap';
+
 
 function FormSubmission() {
     const { templateId } = useParams();
@@ -63,129 +65,205 @@ function FormSubmission() {
         }
     };
 
-    if (error) return <div style={{ color: 'red' }}>Error: {error}</div>;
-    if (!template) return <div>Loading template...</div>;
+    if (error) {
+        return (
+            <Container className="mt-4">
+                <Alert variant="danger">Error: {error}</Alert>
+            </Container>
+        );
+    }
+
+    if (!template) {
+        return (
+            <Container className="d-flex justify-content-center align-items-center vh-100">
+                <Spinner animation="border" />
+                <p className="ms-3">Loading template...</p>
+            </Container>
+        );
+    }
 
     return (
-        <div style={{ margin: '20px' }}>
-            <h1>Fill Out Form: {template.title}</h1>
-            <form onSubmit={handleSubmit}>
+        <Container className="my-4">
+            <h1 className="text-center mb-4">Fill Out Form: {template.title}</h1>
+            {success && <Alert variant="success">{success}</Alert>}
+            <Form onSubmit={handleSubmit}>
                 {/* Single-line string questions */}
                 {template.custom_string1_state && (
-                    <div>
-                        <label>{template.custom_string1_question}</label>
-                        <input type="text" name="custom_string1_answer" onChange={handleChange} />
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_string1">
+                        <Form.Label>{template.custom_string1_question}</Form.Label>
+                        <Form.Control
+                            type="text"
+                            name="custom_string1_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
                 {template.custom_string2_state && (
-                    <div>
-                        <label>{template.custom_string2_question}</label>
-                        <input type="text" name="custom_string2_answer" onChange={handleChange} />
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_string2">
+                        <Form.Label>{template.custom_string2_question}</Form.Label>
+                        <Form.Control
+                            type="text"
+                            name="custom_string2_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
                 {template.custom_string3_state && (
-                    <div>
-                        <label>{template.custom_string3_question}</label>
-                        <input type="text" name="custom_string3_answer" onChange={handleChange} />
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_string3">
+                        <Form.Label>{template.custom_string3_question}</Form.Label>
+                        <Form.Control
+                            type="text"
+                            name="custom_string3_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
                 {template.custom_string4_state && (
-                    <div>
-                        <label>{template.custom_string4_question}</label>
-                        <input type="text" name="custom_string4_answer" onChange={handleChange} />
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_string4">
+                        <Form.Label>{template.custom_string4_question}</Form.Label>
+                        <Form.Control
+                            type="text"
+                            name="custom_string4_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
 
                 {/* Multi-line text questions */}
                 {template.custom_multiline1_state && (
-                    <div>
-                        <label>{template.custom_multiline1_question}</label>
-                        <textarea name="custom_multiline1_answer" onChange={handleChange} />
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_multiline1">
+                        <Form.Label>{template.custom_multiline1_question}</Form.Label>
+                        <Form.Control
+                            as="textarea"
+                            rows={3}
+                            name="custom_multiline1_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
                 {template.custom_multiline2_state && (
-                    <div>
-                        <label>{template.custom_multiline2_question}</label>
-                        <textarea name="custom_multiline2_answer" onChange={handleChange} />
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_multiline2">
+                        <Form.Label>{template.custom_multiline2_question}</Form.Label>
+                        <Form.Control
+                            as="textarea"
+                            rows={3}
+                            name="custom_multiline2_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
                 {template.custom_multiline3_state && (
-                    <div>
-                        <label>{template.custom_multiline3_question}</label>
-                        <textarea name="custom_multiline3_answer" onChange={handleChange} />
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_multiline3">
+                        <Form.Label>{template.custom_multiline3_question}</Form.Label>
+                        <Form.Control
+                            as="textarea"
+                            rows={3}
+                            name="custom_multiline3_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
                 {template.custom_multiline4_state && (
-                    <div>
-                        <label>{template.custom_multiline4_question}</label>
-                        <textarea name="custom_multiline4_answer" onChange={handleChange} />
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_multiline4">
+                        <Form.Label>{template.custom_multiline4_question}</Form.Label>
+                        <Form.Control
+                            as="textarea"
+                            rows={3}
+                            name="custom_multiline4_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
 
                 {/* Integer questions */}
                 {template.custom_int1_state && (
-                    <div>
-                        <label>{template.custom_int1_question}</label>
-                        <input type="number" name="custom_int1_answer" onChange={handleChange} />
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_int1">
+                        <Form.Label>{template.custom_int1_question}</Form.Label>
+                        <Form.Control
+                            type="number"
+                            name="custom_int1_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
                 {template.custom_int2_state && (
-                    <div>
-                        <label>{template.custom_int2_question}</label>
-                        <input type="number" name="custom_int2_answer" onChange={handleChange} />
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_int2">
+                        <Form.Label>{template.custom_int2_question}</Form.Label>
+                        <Form.Control
+                            type="number"
+                            name="custom_int2_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
                 {template.custom_int3_state && (
-                    <div>
-                        <label>{template.custom_int3_question}</label>
-                        <input type="number" name="custom_int3_answer" onChange={handleChange} />
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_int3">
+                        <Form.Label>{template.custom_int3_question}</Form.Label>
+                        <Form.Control
+                            type="number"
+                            name="custom_int3_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
                 {template.custom_int4_state && (
-                    <div>
-                        <label>{template.custom_int4_question}</label>
-                        <input type="number" name="custom_int4_answer" onChange={handleChange} />
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_int4">
+                        <Form.Label>{template.custom_int4_question}</Form.Label>
+                        <Form.Control
+                            type="number"
+                            name="custom_int4_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
 
                 {/* Checkbox questions */}
                 {template.custom_checkbox1_state && (
-                    <div>
-                        <label>
-                            <input type="checkbox" name="custom_checkbox1_answer" onChange={handleChange} />
-                            {template.custom_checkbox1_question}
-                        </label>
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_checkbox1">
+                        <Form.Check
+                            type="checkbox"
+                            label={template.custom_checkbox1_question}
+                            name="custom_checkbox1_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
                 {template.custom_checkbox2_state && (
-                    <div>
-                        <label>
-                            <input type="checkbox" name="custom_checkbox2_answer" onChange={handleChange} />
-                            {template.custom_checkbox2_question}
-                        </label>
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_checkbox2">
+                        <Form.Check
+                            type="checkbox"
+                            label={template.custom_checkbox2_question}
+                            name="custom_checkbox2_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
                 {template.custom_checkbox3_state && (
-                    <div>
-                        <label>
-                            <input type="checkbox" name="custom_checkbox3_answer" onChange={handleChange} />
-                            {template.custom_checkbox3_question}
-                        </label>
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_checkbox3">
+                        <Form.Check
+                            type="checkbox"
+                            label={template.custom_checkbox3_question}
+                            name="custom_checkbox3_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
                 {template.custom_checkbox4_state && (
-                    <div>
-                        <label>
-                            <input type="checkbox" name="custom_checkbox4_answer" onChange={handleChange} />
-                            {template.custom_checkbox4_question}
-                        </label>
-                    </div>
+                    <Form.Group className="mb-3" controlId="custom_checkbox4">
+                        <Form.Check
+                            type="checkbox"
+                            label={template.custom_checkbox4_question}
+                            name="custom_checkbox4_answer"
+                            onChange={handleChange}
+                        />
+                    </Form.Group>
                 )}
 
-                <button type="submit">Submit Form</button>
-            </form>
-            {success && <div style={{ color: 'green' }}>{success}</div>}
-        </div>
+                <Button type="submit" variant="primary" className="w-100">
+                    Submit Form
+                </Button>
+            </Form>
+        </Container>
     );
 }
 

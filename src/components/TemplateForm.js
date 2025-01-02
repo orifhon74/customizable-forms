@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { storage } from '../firebase'; // Firebase storage instance
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Container, Form, Button, Row, Col, Alert, Badge, Card, Spinner } from 'react-bootstrap';
+
 
 function TemplateForm() {
     const location = useLocation();
@@ -177,90 +179,97 @@ function TemplateForm() {
     // Render
     // --------------------------------------------
     return (
-        <div style={{ margin: '20px' }}>
-            <h1>{isEditMode ? 'Edit Template' : 'Create Template'}</h1>
-
-            {error && <p style={{ color: 'red' }}>{error}</p>}
-            {success && <p style={{ color: 'green' }}>{success}</p>}
-
-            <form onSubmit={handleSubmit}>
-                <div>
-                    <label>Title:</label>
-                    <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        required
-                    />
-                </div>
-
-                <div>
-                    <label>Description:</label>
-                    <textarea
+        <Container className="my-4">
+            <h1 className="text-center">{isEditMode ? 'Edit Template' : 'Create Template'}</h1>
+            {error && <Alert variant="danger">{error}</Alert>}
+            {success && <Alert variant="success">{success}</Alert>}
+            <Form onSubmit={handleSubmit}>
+                <Row className="mb-4">
+                    <Col md={6}>
+                        <Form.Group controlId="formTitle">
+                            <Form.Label>Title</Form.Label>
+                            <Form.Control
+                                type="text"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                required
+                            />
+                        </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                        <Form.Group controlId="formAccessType">
+                            <Form.Label>Access Type</Form.Label>
+                            <Form.Select value={accessType} onChange={(e) => setAccessType(e.target.value)}>
+                                <option value="public">Public</option>
+                                <option value="private">Private</option>
+                            </Form.Select>
+                        </Form.Group>
+                    </Col>
+                </Row>
+                <Form.Group controlId="formDescription" className="mb-4">
+                    <Form.Label>Description</Form.Label>
+                    <Form.Control
+                        as="textarea"
+                        rows={3}
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                     />
-                </div>
+                </Form.Group>
+                <Form.Group controlId="formImage" className="mb-4">
+                    <Form.Label>Image</Form.Label>
+                    <Form.Control type="file" onChange={handleImageUpload} />
+                    {uploading && <Spinner animation="border" size="sm" className="ms-2" />}
+                </Form.Group>
+                <Row className="mb-4">
+                    <Col>
+                        <Form.Group controlId="formTopic">
+                            <Form.Label>Topic</Form.Label>
+                            <Form.Select value={topic} onChange={(e) => setTopic(e.target.value)}>
+                                <option value="">Select a topic</option>
+                                <option value="Education">Education</option>
+                                <option value="Quiz">Quiz</option>
+                                <option value="Other">Other</option>
+                            </Form.Select>
+                        </Form.Group>
+                    </Col>
+                    <Col>
+                        <Form.Group controlId="formTags">
+                            <Form.Label>Tags</Form.Label>
+                            <div className="d-flex">
+                                <Form.Control
+                                    type="text"
+                                    placeholder="Enter a tag"
+                                    value={tagInput}
+                                    onChange={(e) => setTagInput(e.target.value)}
+                                />
+                                <Button variant="secondary" className="ms-2" onClick={handleAddTag}>
+                                    Add
+                                </Button>
+                            </div>
+                            <div className="mt-2">
+                                {tags.map((tag, index) => (
+                                    <Badge
+                                        key={index}
+                                        bg="secondary"
+                                        className="me-1"
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() => handleRemoveTag(tag)}
+                                    >
+                                        {tag} ✕
+                                    </Badge>
+                                ))}
+                            </div>
+                        </Form.Group>
+                    </Col>
+                </Row>
 
-                <div>
-                    <label>Access Type:</label>
-                    <select value={accessType} onChange={(e) => setAccessType(e.target.value)}>
-                        <option value="public">Public</option>
-                        <option value="private">Private</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label>Topic:</label>
-                    <select value={topic} onChange={(e) => setTopic(e.target.value)}>
-                        <option value="">Select a topic</option>
-                        <option value="Education">Education</option>
-                        <option value="Quiz">Quiz</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-
-                {/*<div>*/}
-                {/*    <label>Image (Upload to Firebase):</label>*/}
-                {/*    <input type="file" onChange={(e) => setImageFile(e.target.files[0])}/>*/}
-                {/*    <button type="button" onClick={handleImageUpload} disabled={uploading}>*/}
-                {/*        {uploading ? 'Uploading...' : 'Upload Image'}*/}
-                {/*    </button>*/}
-                {/*</div>*/}
-
-                <div>
-                    <label>Image (Upload to Firebase):</label>
-                    <input type="file" onChange={handleImageUpload}/>
-                </div>
-
-                <div>
-                    <label>Tags:</label>
-                    <input
-                        type="text"
-                        value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
-                        placeholder="Enter a tag"
-                    />
-                    <button type="button" onClick={handleAddTag}>
-                        Add Tag
-                    </button>
-                </div>
-                <div>
-                    {tags.map((tag, index) => (
-                        <span key={index} style={{marginRight: '10px'}}>
-                        {tag}
-                            <button type="button" onClick={() => handleRemoveTag(tag)}>
-                            ✕
-                        </button>
-                    </span>
-                    ))}
-                </div>
-
-                <hr/>
+                {/* String Questions */}
+                <hr />
                 <h3>String Questions</h3>
                 {stringQuestions.map((val, i) => (
-                    <div key={i}>
-                        <input
+                    <Form.Group controlId={`stringQuestion${i}`} key={i} className="mb-3">
+                        <Form.Label>String Question {i + 1}</Form.Label>
+                        <Form.Control
                             type="text"
                             placeholder={`String Question ${i + 1}`}
                             value={val}
@@ -270,14 +279,18 @@ function TemplateForm() {
                                 )
                             }
                         />
-                    </div>
+                    </Form.Group>
                 ))}
 
-                <hr/>
+                {/* Multiline Questions */}
+                <hr />
                 <h3>Multiline Questions</h3>
                 {multilineQuestions.map((val, i) => (
-                    <div key={i}>
-                        <textarea
+                    <Form.Group controlId={`multilineQuestion${i}`} key={i} className="mb-3">
+                        <Form.Label>Multiline Question {i + 1}</Form.Label>
+                        <Form.Control
+                            as="textarea"
+                            rows={3}
                             placeholder={`Multiline Question ${i + 1}`}
                             value={val}
                             onChange={(e) =>
@@ -286,15 +299,17 @@ function TemplateForm() {
                                 )
                             }
                         />
-                    </div>
+                    </Form.Group>
                 ))}
 
-                <hr/>
+                {/* Integer Questions */}
+                <hr />
                 <h3>Integer Questions</h3>
                 {intQuestions.map((val, i) => (
-                    <div key={i}>
-                        <input
-                            type="text"
+                    <Form.Group controlId={`intQuestion${i}`} key={i} className="mb-3">
+                        <Form.Label>Integer Question {i + 1}</Form.Label>
+                        <Form.Control
+                            type="number"
                             placeholder={`Integer Question ${i + 1}`}
                             value={val}
                             onChange={(e) =>
@@ -303,14 +318,16 @@ function TemplateForm() {
                                 )
                             }
                         />
-                    </div>
+                    </Form.Group>
                 ))}
 
-                <hr/>
+                {/* Checkbox Questions */}
+                <hr />
                 <h3>Checkbox Questions</h3>
                 {checkboxQuestions.map((val, i) => (
-                    <div key={i}>
-                        <input
+                    <Form.Group controlId={`checkboxQuestion${i}`} key={i} className="mb-3">
+                        <Form.Label>Checkbox Question {i + 1}</Form.Label>
+                        <Form.Control
                             type="text"
                             placeholder={`Checkbox Question ${i + 1}`}
                             value={val}
@@ -320,13 +337,14 @@ function TemplateForm() {
                                 )
                             }
                         />
-                    </div>
+                    </Form.Group>
                 ))}
 
-                <hr/>
-                <button type="submit">{isEditMode ? 'Save Changes' : 'Create Template'}</button>
-            </form>
-        </div>
+                <Button variant="primary" type="submit" className="w-100">
+                    {isEditMode ? 'Save Changes' : 'Create Template'}
+                </Button>
+            </Form>
+        </Container>
     );
 }
 
