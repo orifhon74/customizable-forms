@@ -152,6 +152,9 @@ function TemplateDetails() {
                 </ul>
             </div>
 
+            {/*/!* Add TemplateStats *!/*/}
+            {/*<TemplateStats templateId={id} />*/}
+
             <h3>Comments: </h3>
             <ul>
                 {comments.map((comment) => (

@@ -1,4 +1,3 @@
-// src/components/NavBar.js
 import React, { useContext, useState } from 'react';
 import { Navbar, Nav, NavDropdown, Container, Form, Button } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
@@ -10,7 +9,6 @@ function NavBar({ isAuthenticated, userRole, handleLogout }) {
     const { theme, toggleTheme } = useContext(ThemeContext);
     const navigate = useNavigate();
 
-    // For searching
     const [searchQuery, setSearchQuery] = useState('');
 
     const handleSearchSubmit = (e) => {
@@ -27,86 +25,54 @@ function NavBar({ isAuthenticated, userRole, handleLogout }) {
             expand="lg"
             className="mb-3"
         >
-            <Container>
+            <Container fluid>
                 <Navbar.Brand as={Link} to="/">
                     {t('appTitle') || 'Customizable Forms'}
                 </Navbar.Brand>
-                <Navbar.Toggle aria-controls="main-navbar-nav" />
-                <Navbar.Collapse id="main-navbar-nav">
+                <Navbar.Toggle aria-controls="navbar-nav" />
+                <Navbar.Collapse id="navbar-nav">
                     <Nav className="me-auto">
                         {isAuthenticated ? (
                             <>
                                 {userRole === 'admin' && (
                                     <>
-                                        <Nav.Link as={Link} to="/admin">
-                                            Admin Dashboard
-                                        </Nav.Link>
-                                        <Nav.Link as={Link} to="/admin/users">
-                                            User Management
-                                        </Nav.Link>
+                                        <Nav.Link as={Link} to="/admin">Admin Dashboard</Nav.Link>
+                                        <Nav.Link as={Link} to="/admin/users">User Management</Nav.Link>
                                     </>
                                 )}
-                                <Nav.Link as={Link} to="/public-templates">
-                                    Public Templates
-                                </Nav.Link>
-                                <Nav.Link as={Link} to="/templates">
-                                    Templates
-                                </Nav.Link>
-                                <Nav.Link as={Link} to="/forms">
-                                    Forms
-                                </Nav.Link>
-                                <Nav.Link as={Link} to="/create-template">
-                                    Create Template
-                                </Nav.Link>
+                                <Nav.Link as={Link} to="/public-templates">Public Templates</Nav.Link>
+                                <Nav.Link as={Link} to="/templates">Templates</Nav.Link>
+                                <Nav.Link as={Link} to="/forms">Forms</Nav.Link>
+                                <Nav.Link as={Link} to="/create-template">Create Template</Nav.Link>
                             </>
                         ) : (
                             <>
-                                <Nav.Link as={Link} to="/login">
-                                    {t('login') || 'Login'}
-                                </Nav.Link>
-                                <Nav.Link as={Link} to="/register">
-                                    Register
-                                </Nav.Link>
-                                <Nav.Link as={Link} to="/public-templates">
-                                    Public Templates
-                                </Nav.Link>
+                                <Nav.Link as={Link} to="/login">Login</Nav.Link>
+                                <Nav.Link as={Link} to="/register">Register</Nav.Link>
+                                <Nav.Link as={Link} to="/public-templates">Public Templates</Nav.Link>
                             </>
                         )}
                     </Nav>
-
-                    {/* Search form */}
-                    <Form className="d-flex me-3" onSubmit={handleSearchSubmit}>
+                    <Form className="d-flex" onSubmit={handleSearchSubmit}>
                         <Form.Control
                             type="search"
-                            placeholder="Search templates..."
+                            placeholder="Search..."
                             className="me-2"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
-                        <Button variant="outline-success" type="submit">
-                            Search
-                        </Button>
+                        <Button variant="outline-success" type="submit">Search</Button>
                     </Form>
-
-                    <Nav>
-                        {/* Language dropdown */}
+                    <Nav className="ms-auto">
                         <NavDropdown title={language.toUpperCase()} id="lang-dropdown">
                             <NavDropdown.Item onClick={() => switchLanguage('en')}>EN</NavDropdown.Item>
                             <NavDropdown.Item onClick={() => switchLanguage('uz')}>UZ</NavDropdown.Item>
                         </NavDropdown>
-
-                        <Button
-                            variant="outline-secondary"
-                            className="mx-2"
-                            onClick={toggleTheme}
-                        >
+                        <Button variant="outline-secondary" className="mx-2" onClick={toggleTheme}>
                             {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
                         </Button>
-
                         {isAuthenticated && (
-                            <Button variant="outline-danger" onClick={handleLogout}>
-                                Sign Out
-                            </Button>
+                            <Button variant="outline-danger" onClick={handleLogout}>Sign Out</Button>
                         )}
                     </Nav>
                 </Navbar.Collapse>

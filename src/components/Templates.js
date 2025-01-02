@@ -1,4 +1,3 @@
-// src/components/Templates.js
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -6,13 +5,14 @@ function Templates() {
     const [templates, setTemplates] = useState([]);
     const [selectedTemplate, setSelectedTemplate] = useState(null);
     const [forms, setForms] = useState([]);
+    const [stats, setStats] = useState(null);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
     const { id } = useParams();
 
     const user = JSON.parse(localStorage.getItem('user'));
     const isAdmin = user?.role === 'admin';
-    const userRole = user?.role; // e.g., "admin" or "user"
+    const userRole = user?.role;
     const userId = user?.id;
 
     useEffect(() => {
@@ -24,7 +24,6 @@ function Templates() {
             }
 
             try {
-                // Fetch templates
                 const response = await fetch('http://localhost:5001/api/templates', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
@@ -34,18 +33,18 @@ function Templates() {
                 const data = await response.json();
 
                 if (userRole === 'admin') {
-                    setTemplates(data); // Admins see all templates
+                    setTemplates(data);
                 } else {
                     const userTemplates = data.filter((template) => template.user_id === userId);
-                    setTemplates(userTemplates); // Users see only their own templates
+                    setTemplates(userTemplates);
                 }
 
-                // If an ID is provided, find and set the selected template
                 if (id) {
                     const foundTemplate = data.find((template) => template.id === parseInt(id));
                     if (foundTemplate) {
                         setSelectedTemplate(foundTemplate);
-                        await fetchForms(foundTemplate.id); // Fetch forms for the selected template
+                        await fetchForms(foundTemplate.id);
+                        await fetchStats(foundTemplate.id);
                     } else {
                         setError('Template not found');
                     }
@@ -67,6 +66,23 @@ function Templates() {
                 if (!response.ok) throw new Error('Failed to fetch forms');
                 const data = await response.json();
                 setForms(data);
+            } catch (err) {
+                setError(err.message);
+            }
+        };
+
+        const fetchStats = async (templateId) => {
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(
+                    `http://localhost:5001/api/aggregator/${templateId}`,
+                    {
+                        headers: { Authorization: `Bearer ${token}` },
+                    }
+                );
+                if (!response.ok) throw new Error('Failed to fetch stats');
+                const data = await response.json();
+                setStats(data);
             } catch (err) {
                 setError(err.message);
             }
@@ -153,6 +169,53 @@ function Templates() {
                         </>
                     )}
                     <button onClick={() => navigate('/templates')}>Back to Templates</button>
+
+                    <h2>Statistics</h2>
+                    {stats ? (
+                        <div>
+                            <p>Total Forms Submitted: {stats.total_forms || 0}</p>
+                            <h4>Averages:</h4>
+                            <ul>
+                                {stats.averages &&
+                                    Object.entries(stats.averages)
+                                        .filter(([key]) => {
+                                            // Only include fields with corresponding questions
+                                            const questionKey = key.replace('_answer', '_question');
+                                            return selectedTemplate[questionKey];
+                                        })
+                                        .map(([key, value]) => {
+                                            const questionKey = key.replace('_answer', '_question');
+                                            const question = selectedTemplate[questionKey];
+                                            return (
+                                                <li key={key}>
+                                                    <strong>{question}:</strong> {value ? value.toFixed(2) : 0}
+                                                </li>
+                                            );
+                                        })}
+                            </ul>
+                            <h4>Most Common Answers:</h4>
+                            <ul>
+                                {stats.commonStrings &&
+                                    Object.entries(stats.commonStrings)
+                                        .filter(([key]) => {
+                                            // Only include fields with corresponding questions
+                                            const questionKey = key.replace('_answer', '_question');
+                                            return selectedTemplate[questionKey];
+                                        })
+                                        .map(([key, value]) => {
+                                            const questionKey = key.replace('_answer', '_question');
+                                            const question = selectedTemplate[questionKey];
+                                            return (
+                                                <li key={key}>
+                                                    <strong>{question}:</strong> {value || 'None'}
+                                                </li>
+                                            );
+                                        })}
+                            </ul>
+                        </div>
+                    ) : (
+                        <p>Loading statistics...</p>
+                    )}
 
                     <h2>Submitted Forms</h2>
                     {forms.length === 0 ? (

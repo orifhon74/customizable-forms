@@ -2,24 +2,68 @@ import React, { useEffect, useState } from 'react';
 
 function TemplateStats({ templateId }) {
     const [stats, setStats] = useState(null);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        fetch(`http://localhost:5001/api/templates/${templateId}/stats`)
-            .then((res) => res.json())
-            .then((data) => setStats(data[0])) // Assuming stats is an array with one object
-            .catch((err) => console.error('Error fetching stats:', err));
+        const fetchStats = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) throw new Error('Unauthorized: No token found');
+
+                const res = await fetch(`http://localhost:5001/api/aggregator/${templateId}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+
+                if (!res.ok) {
+                    throw new Error(`Error fetching stats: ${res.statusText}`);
+                }
+
+                const data = await res.json();
+                setStats(data);
+            } catch (err) {
+                console.error(err.message);
+                setError(err.message);
+            }
+        };
+
+        fetchStats();
     }, [templateId]);
 
-    if (!stats) {
-        return <p>Loading stats...</p>;
-    }
+    if (error) return <p style={{ color: 'red' }}>{error}</p>;
+    if (!stats) return <p>Loading statistics...</p>;
 
     return (
         <div>
-            <h1>Template Statistics</h1>
-            <p>Average for Question 1 (Int): {stats.avg_int1}</p>
-            <p>Total Responses to Checkbox 1: {stats.checkbox1_count}</p>
-            <p>Total "Yes" for Checkbox 1: {stats.checkbox1_true_count}</p>
+            <h2>Template Statistics</h2>
+            <p><strong>Total Forms Submitted:</strong> {stats.total_forms}</p>
+
+            <h3>Average Values (Numeric Fields)</h3>
+            <ul>
+                {Object.entries(stats.averages).map(([key, value]) => (
+                    <li key={key}>
+                        <strong>{key.replace('_answer', '').replace('custom_', '')}:</strong> {value !== null ? value.toFixed(2) : 'N/A'}
+                    </li>
+                ))}
+            </ul>
+
+            <h3>Most Common Answers (String Fields)</h3>
+            <ul>
+                {Object.entries(stats.commonStrings).map(([key, value]) => (
+                    <li key={key}>
+                        <strong>{key.replace('_answer', '').replace('custom_', '')}:</strong> {value || 'N/A'}
+                    </li>
+                ))}
+            </ul>
+
+            <h3>Checkbox Statistics</h3>
+            <ul>
+                {Object.entries(stats.checkboxStats).map(([key, value]) => (
+                    <li key={key}>
+                        <strong>{key.replace('_answer', '').replace('custom_', '')}:</strong>
+                        True: {value.true}, False: {value.false}
+                    </li>
+                ))}
+            </ul>
         </div>
     );
 }
