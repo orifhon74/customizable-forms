@@ -14,12 +14,31 @@ const authenticate = require('../middleware/authenticate');
  */
 router.get('/', authenticate, async (req, res) => {
     try {
-        const forms = await Form.findAll({
-            include: [
-                { model: Template, attributes: ['title'] },
-                { model: User, attributes: ['username'] },
-            ],
-        });
+        const user = req.user;
+        let forms;
+
+        if (user.role === 'admin') {
+            // Admin sees all forms
+            forms = await Form.findAll({
+                include: [
+                    { model: Template, attributes: ['id', 'title'] },
+                    { model: User, attributes: ['id', 'username'] },
+                ],
+            });
+        } else {
+            // Users only see forms from their templates
+            const userTemplates = await Template.findAll({ where: { user_id: user.id } });
+            const templateIds = userTemplates.map((template) => template.id);
+
+            forms = await Form.findAll({
+                where: { template_id: templateIds },
+                include: [
+                    { model: Template, attributes: ['id', 'title'] },
+                    { model: User, attributes: ['id', 'username'] },
+                ],
+            });
+        }
+
         res.json(forms);
     } catch (err) {
         console.error('Error fetching forms:', err);
