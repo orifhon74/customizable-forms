@@ -362,51 +362,43 @@ function Templates() {
                                     <ListGroup.Item
                                         key={form.id}
                                         style={{
-                                            backgroundColor:
-                                                theme === 'dark'
-                                                    ? '#495057'
-                                                    : '#fff',
-                                            color:
-                                                theme === 'dark'
-                                                    ? '#fff'
-                                                    : '#000',
+                                            backgroundColor: theme === 'dark' ? '#495057' : '#fff',
+                                            color: theme === 'dark' ? '#fff' : '#000',
                                         }}
                                     >
                                         <p>
-                                            <strong>Submitted by User ID:</strong>{' '}
-                                            {form.user_id}
+                                            <strong>Submitted by User ID:</strong> {form.user_id}
                                         </p>
                                         <p>
                                             <strong>Answers:</strong>
                                         </p>
                                         <ul>
                                             {Object.keys(form)
-                                                .filter(
-                                                    (key) =>
-                                                        key.includes('_answer') &&
-                                                        form[key]
-                                                )
+                                                .filter((key) => key.includes('_answer') && form[key]) // Ensure the answer exists
                                                 .map((key) => {
-                                                    const questionKey = key.replace(
-                                                        '_answer',
-                                                        '_question'
-                                                    );
-                                                    const question =
-                                                        selectedTemplate[
-                                                            questionKey
-                                                            ];
+                                                    if (!selectedTemplate) {
+                                                        console.error(
+                                                            `selectedTemplate is null or undefined for form:`,
+                                                            form
+                                                        );
+                                                        return null;
+                                                    }
+
+                                                    const questionKey = key.replace('_answer', '_question');
+                                                    const question = selectedTemplate[questionKey];
+
+                                                    if (!question) {
+                                                        console.warn(
+                                                            `Question for key "${questionKey}" not found in selectedTemplate:`,
+                                                            selectedTemplate
+                                                        );
+                                                        return null;
+                                                    }
+
                                                     return (
                                                         <li key={key}>
-                                                            <strong>
-                                                                {question ||
-                                                                    key.replace(
-                                                                        '_answer',
-                                                                        ''
-                                                                    )}
-                                                                :
-                                                            </strong>{' '}
-                                                            {typeof form[key] ===
-                                                            'boolean'
+                                                            <strong>{question}:</strong>{' '}
+                                                            {typeof form[key] === 'boolean'
                                                                 ? form[key]
                                                                     ? 'Yes'
                                                                     : 'No'
@@ -415,9 +407,7 @@ function Templates() {
                                                     );
                                                 })}
                                         </ul>
-                                        {(isAdmin ||
-                                            user?.id ===
-                                            selectedTemplate.user_id) && (
+                                        {(isAdmin || user?.id === selectedTemplate?.user_id) && (
                                             <div className="mt-2 d-flex">
                                                 <Button
                                                     variant={
@@ -426,17 +416,13 @@ function Templates() {
                                                             : 'outline-secondary'
                                                     }
                                                     className="me-2"
-                                                    onClick={() =>
-                                                        handleEditForm(form.id)
-                                                    }
+                                                    onClick={() => handleEditForm(form.id)}
                                                 >
                                                     Edit Form
                                                 </Button>
                                                 <Button
                                                     variant="danger"
-                                                    onClick={() =>
-                                                        handleDeleteForm(form.id)
-                                                    }
+                                                    onClick={() => handleDeleteForm(form.id)}
                                                 >
                                                     Delete Form
                                                 </Button>
