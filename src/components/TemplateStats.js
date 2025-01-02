@@ -4,13 +4,15 @@ function TemplateStats({ templateId }) {
     const [stats, setStats] = useState(null);
     const [error, setError] = useState(null);
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     useEffect(() => {
         const fetchStats = async () => {
             try {
                 const token = localStorage.getItem('token');
                 if (!token) throw new Error('Unauthorized: No token found');
 
-                const res = await fetch(`http://localhost:5001/api/aggregator/${templateId}`, {
+                const res = await fetch(`${API_URL}/api/aggregator/${templateId}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
 

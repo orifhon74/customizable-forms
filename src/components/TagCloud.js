@@ -6,10 +6,12 @@ function TagCloud() {
     const [error, setError] = useState(null);
     const navigate = useNavigate();
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     useEffect(() => {
         const fetchTagCloud = async () => {
             try {
-                const resp = await fetch('http://localhost:5001/api/tags/cloud');
+                const resp = await fetch(`${API_URL}/api/tags/cloud`);
                 if (!resp.ok) throw new Error('Failed to fetch tag cloud');
                 const data = await resp.json();
                 setTags(data);

@@ -13,23 +13,25 @@ function Home() {
 
     const navigate = useNavigate();
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     useEffect(() => {
         const fetchHomeData = async () => {
             try {
                 // Fetch latest templates
-                let resp = await fetch('http://localhost:5001/api/templates/latest');
+                let resp = await fetch(`${API_URL}/api/templates/latest`);
                 if (!resp.ok) throw new Error('Failed to fetch latest templates');
                 let data = await resp.json();
                 setLatestTemplates(data);
 
                 // Fetch top 5 templates
-                resp = await fetch('http://localhost:5001/api/templates/top');
+                resp = await fetch(`${API_URL}/api/templates/top`);
                 if (!resp.ok) throw new Error('Failed to fetch top templates');
                 data = await resp.json();
                 setTopTemplates(data);
 
                 // Fetch tag cloud
-                resp = await fetch('http://localhost:5001/api/tags/cloud');
+                resp = await fetch(`${API_URL}/api/tags/cloud`);
                 if (!resp.ok) throw new Error('Failed to fetch tag cloud');
                 data = await resp.json();
                 setTags(data);
@@ -52,7 +54,7 @@ function Home() {
 
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch('http://localhost:5001/api/likes', {
+            const response = await fetch(`${API_URL}/api/likes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

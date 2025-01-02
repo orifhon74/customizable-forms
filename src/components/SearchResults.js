@@ -10,12 +10,14 @@ function SearchResults() {
     const [results, setResults] = useState([]);
     const [error, setError] = useState(null);
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     useEffect(() => {
         const fetchSearchResults = async () => {
             if (!searchQuery) return;
 
             try {
-                let url = `http://localhost:5001/api/templates/search`;
+                let url = `${API_URL}/api/templates/search`;
 
                 if (searchType === 'tag') {
                     url += `?tag=${searchQuery}`; // Pass the tag name

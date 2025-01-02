@@ -9,11 +9,13 @@ function FormSubmission() {
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     useEffect(() => {
         const fetchTemplate = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch(`http://localhost:5001/api/templates/${templateId}`, {
+                const response = await fetch(`${API_URL}/api/templates/${templateId}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (!response.ok) {
@@ -44,7 +46,7 @@ function FormSubmission() {
             return;
         }
         try {
-            const response = await fetch(`http://localhost:5001/api/forms/${templateId}/submit`, {
+            const response = await fetch(`${API_URL}/api/forms/${templateId}/submit`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

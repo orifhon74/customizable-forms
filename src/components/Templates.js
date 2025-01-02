@@ -15,6 +15,8 @@ function Templates() {
     const userRole = user?.role;
     const userId = user?.id;
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     useEffect(() => {
         const fetchTemplatesAndForms = async () => {
             const token = localStorage.getItem('token');
@@ -24,7 +26,7 @@ function Templates() {
             }
 
             try {
-                const response = await fetch('http://localhost:5001/api/templates', {
+                const response = await fetch(`${API_URL}/api/templates`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
 
@@ -58,7 +60,7 @@ function Templates() {
             const token = localStorage.getItem('token');
             try {
                 const response = await fetch(
-                    `http://localhost:5001/api/forms/template/${templateId}`,
+                    `${API_URL}/api/forms/template/${templateId}`,
                     {
                         headers: { Authorization: `Bearer ${token}` },
                     }
@@ -75,7 +77,7 @@ function Templates() {
             const token = localStorage.getItem('token');
             try {
                 const response = await fetch(
-                    `http://localhost:5001/api/aggregator/${templateId}`,
+                    `${API_URL}/api/aggregator/${templateId}`,
                     {
                         headers: { Authorization: `Bearer ${token}` },
                     }
@@ -94,7 +96,7 @@ function Templates() {
     const handleDeleteTemplate = async (templateId) => {
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch(`http://localhost:5001/api/templates/${templateId}`, {
+            const response = await fetch(`${API_URL}/api/templates/${templateId}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -115,7 +117,7 @@ function Templates() {
     const handleDeleteForm = async (formId) => {
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch(`http://localhost:5001/api/forms/${formId}`, {
+            const response = await fetch(`${API_URL}/api/forms/${formId}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });

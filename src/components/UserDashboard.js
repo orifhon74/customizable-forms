@@ -6,12 +6,14 @@ function UserDashboard() {
     const [forms, setForms] = useState([]);
     const [error, setError] = useState(null);
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     useEffect(() => {
         const token = localStorage.getItem('token');
 
         const fetchTemplates = async () => {
             try {
-                const response = await fetch('http://localhost:5001/api/templates', {
+                const response = await fetch(`${API_URL}/api/templates`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (!response.ok) throw new Error('Failed to fetch templates');
@@ -24,7 +26,7 @@ function UserDashboard() {
 
         const fetchForms = async () => {
             try {
-                const response = await fetch('http://localhost:5001/api/forms', {
+                const response = await fetch(`${API_URL}/api/forms`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (!response.ok) throw new Error('Failed to fetch forms');

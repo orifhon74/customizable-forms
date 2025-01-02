@@ -6,10 +6,12 @@ function PublicTemplates() {
     const [error, setError] = useState(null);
     const isAuthenticated = !!localStorage.getItem('token');
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     useEffect(() => {
         const fetchTemplates = async () => {
             try {
-                const response = await fetch('http://localhost:5001/api/templates/public');
+                const response = await fetch(`${API_URL}/api/templates/public`);
                 if (!response.ok) throw new Error('Failed to fetch public templates');
                 const data = await response.json();
                 setTemplates(data);
@@ -28,7 +30,7 @@ function PublicTemplates() {
 
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch('http://localhost:5001/api/likes', {
+            const response = await fetch(`${API_URL}/api/likes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

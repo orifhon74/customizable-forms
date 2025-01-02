@@ -6,12 +6,14 @@ function Forms() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     useEffect(() => {
         const fetchForms = async () => {
             try {
                 const token = localStorage.getItem('token');
                 if (!token) throw new Error('No token found. Please log in.');
-                const response = await fetch('http://localhost:5001/api/forms', {
+                const response = await fetch(`${API_URL}/api/forms`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (!response.ok) {

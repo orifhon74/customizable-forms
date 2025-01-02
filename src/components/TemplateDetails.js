@@ -10,10 +10,12 @@ function TemplateDetails() {
     const [likeDisabled, setLikeDisabled] = useState(false); // For disabling like button
     const [commentContent, setCommentContent] = useState(''); // Controlled input for comment
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     useEffect(() => {
         const fetchTemplateDetails = async () => {
             try {
-                const resp = await fetch(`http://localhost:5001/api/templates/${id}`, {
+                const resp = await fetch(`${API_URL}/api/templates/${id}`, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem('token')}`,
                     },
@@ -25,7 +27,7 @@ function TemplateDetails() {
                 setLikes(data.likeCount || 0);
 
                 // Fetch comments
-                const commentsResp = await fetch(`http://localhost:5001/api/comments/${id}`);
+                const commentsResp = await fetch(`${API_URL}/api/comments/${id}`);
                 const commentsData = await commentsResp.json();
                 setComments(commentsData);
             } catch (err) {
@@ -45,7 +47,7 @@ function TemplateDetails() {
 
         try {
             setLikeDisabled(true); // Disable button to prevent multiple clicks
-            const resp = await fetch(`http://localhost:5001/api/likes`, {
+            const resp = await fetch(`${API_URL}/api/likes`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -75,7 +77,7 @@ function TemplateDetails() {
         }
 
         try {
-            const resp = await fetch(`http://localhost:5001/api/comments`, {
+            const resp = await fetch(`${API_URL}/api/comments`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

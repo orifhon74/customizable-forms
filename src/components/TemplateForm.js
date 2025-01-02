@@ -31,6 +31,8 @@ function TemplateForm() {
     const [tags, setTags] = useState([]); // Store tags as an array of strings
     const [tagInput, setTagInput] = useState(''); // Temporary input for the tag field
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     const handleAddTag = () => {
         if (tagInput.trim() && !tags.includes(tagInput)) {
             setTags((prev) => [...prev, tagInput.trim()]);
@@ -50,7 +52,7 @@ function TemplateForm() {
             const fetchTemplate = async () => {
                 const token = localStorage.getItem('token');
                 try {
-                    const resp = await fetch(`http://localhost:5001/api/templates/${templateId}`, {
+                    const resp = await fetch(`${API_URL}/api/templates/${templateId}`, {
                         headers: { Authorization: `Bearer ${token}` },
                     });
                     if (!resp.ok) throw new Error('Failed to fetch template for editing');
@@ -110,8 +112,8 @@ function TemplateForm() {
         }
 
         const url = isEditMode
-            ? `http://localhost:5001/api/templates/${templateId}`
-            : 'http://localhost:5001/api/templates';
+            ? `${API_URL}/api/templates/${templateId}`
+            : `${API_URL}/api/templates`;
         const method = isEditMode ? 'PUT' : 'POST';
 
         const requestBody = {

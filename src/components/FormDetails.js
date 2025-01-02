@@ -11,12 +11,14 @@ function FormDetails() {
     const user = JSON.parse(localStorage.getItem('user'));
     const isAdmin = user?.role === 'admin';
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     useEffect(() => {
         const fetchFormDetails = async () => {
             try {
                 const token = localStorage.getItem('token');
                 if (!token) throw new Error('No token found. Please log in.');
-                const response = await fetch(`http://localhost:5001/api/forms/${formId}`, {
+                const response = await fetch(`${API_URL}/api/forms/${formId}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (!response.ok) {
@@ -38,7 +40,7 @@ function FormDetails() {
     const handleDeleteForm = async () => {
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch(`http://localhost:5001/api/forms/${formId}`, {
+            const response = await fetch(`${API_URL}/api/forms/${formId}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });

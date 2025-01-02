@@ -10,12 +10,14 @@ function EditForm() {
     const [success, setSuccess] = useState(null);
     const navigate = useNavigate();
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     useEffect(() => {
         const fetchFormAndTemplate = async () => {
             const token = localStorage.getItem('token');
             try {
                 // Fetch form details
-                const formResp = await fetch(`http://localhost:5001/api/forms/${formId}`, {
+                const formResp = await fetch(`${API_URL}/api/forms/${formId}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (!formResp.ok) throw new Error('Failed to fetch form for editing');
@@ -23,7 +25,7 @@ function EditForm() {
                 setForm(formData);
 
                 // Fetch corresponding template
-                const templateResp = await fetch(`http://localhost:5001/api/templates/${formData.template_id}`, {
+                const templateResp = await fetch(`${API_URL}/api/templates/${formData.template_id}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (!templateResp.ok) throw new Error('Failed to fetch template for form');
@@ -48,7 +50,7 @@ function EditForm() {
         e.preventDefault();
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch(`http://localhost:5001/api/forms/${formId}`, {
+            const response = await fetch(`${API_URL}/api/forms/${formId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

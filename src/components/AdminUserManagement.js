@@ -5,6 +5,8 @@ function AdminUserManagement() {
     const [users, setUsers] = useState([]);
     const [error, setError] = useState(null);
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     useEffect(() => {
         fetchUsers();
     }, []);
@@ -12,7 +14,7 @@ function AdminUserManagement() {
     const fetchUsers = async () => {
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch('http://localhost:5001/api/users', {
+            const response = await fetch(`${API_URL}/api/users`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (!response.ok) {
@@ -28,7 +30,7 @@ function AdminUserManagement() {
     const updateUserRole = async (userId, newRole) => {
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch(`http://localhost:5001/api/users/${userId}/role`, {
+            const response = await fetch(`${API_URL}/api/users/${userId}/role`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -48,7 +50,7 @@ function AdminUserManagement() {
     const toggleBlockUser = async (userId) => {
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch(`http://localhost:5001/api/users/${userId}/block`, {
+            const response = await fetch(`${API_URL}/api/users/${userId}/block`, {
                 method: 'PUT',
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -64,7 +66,7 @@ function AdminUserManagement() {
     const deleteUser = async (userId) => {
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch(`http://localhost:5001/api/users/${userId}`, {
+            const response = await fetch(`${API_URL}/api/users/${userId}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
