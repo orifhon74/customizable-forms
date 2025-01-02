@@ -113,23 +113,49 @@ function TemplateForm() {
             return;
         }
 
+        // Default the topic to "Other" if it is not set
+        const topicValue = topic || 'Other';
+
         const url = isEditMode
             ? `${API_URL}/api/templates/${templateId}`
             : `${API_URL}/api/templates`;
         const method = isEditMode ? 'PUT' : 'POST';
 
+        const topicMapping = {
+            Education: 1,
+            Quiz: 2,
+            Other: 3,
+        };
+
+        const mappedQuestions = {
+            custom_string1_question: stringQuestions[0] || '',
+            custom_string2_question: stringQuestions[1] || '',
+            custom_string3_question: stringQuestions[2] || '',
+            custom_string4_question: stringQuestions[3] || '',
+            custom_multiline1_question: multilineQuestions[0] || '',
+            custom_multiline2_question: multilineQuestions[1] || '',
+            custom_multiline3_question: multilineQuestions[2] || '',
+            custom_multiline4_question: multilineQuestions[3] || '',
+            custom_int1_question: intQuestions[0] || '',
+            custom_int2_question: intQuestions[1] || '',
+            custom_int3_question: intQuestions[2] || '',
+            custom_int4_question: intQuestions[3] || '',
+            custom_checkbox1_question: checkboxQuestions[0] || '',
+            custom_checkbox2_question: checkboxQuestions[1] || '',
+            custom_checkbox3_question: checkboxQuestions[2] || '',
+            custom_checkbox4_question: checkboxQuestions[3] || '',
+        };
+
         const requestBody = {
             title,
             description,
             access_type: accessType,
-            topic_id: topic, // Directly use topic name, assuming backend supports it
-            image_url: imageUrl, // Firebase URL
-            stringQuestions,
-            multilineQuestions,
-            intQuestions,
-            checkboxQuestions,
-            tags,
+            topic_id: topicMapping[topic] || topicMapping.Other, // Default to "Other"
+            image_url: imageUrl,
+            ...mappedQuestions, // Spread the mapped questions here
+            tags: tags.length > 0 ? tags : null,
         };
+
 
         try {
             const resp = await fetch(url, {
@@ -140,17 +166,24 @@ function TemplateForm() {
                 },
                 body: JSON.stringify(requestBody),
             });
+
             if (!resp.ok) {
-                throw new Error(`Failed to ${isEditMode ? 'update' : 'create'} template`);
+                const errorData = await resp.json();
+                console.error('API Error Response:', errorData);
+                throw new Error(
+                    `Failed to ${isEditMode ? 'update' : 'create'} template: ${
+                        errorData.message || 'Unknown error'
+                    }`
+                );
             }
 
             setSuccess(`Template ${isEditMode ? 'updated' : 'created'} successfully!`);
             navigate('/templates');
         } catch (err) {
+            console.error('Submission Error:', err.message);
             setError(err.message);
         }
     };
-
 
     // Handle image file selection
     const handleImageUpload = async (e) => {
