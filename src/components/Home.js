@@ -40,8 +40,8 @@ function Home() {
         fetchHomeData();
     }, []);
 
-    const handleTagClick = (tagName) => {
-        navigate(`/search-results?q=${tagName}`);
+    const handleTagClick = (tagId) => {
+        navigate(`/search-results?q=${tagId}&type=tag`);
     };
 
     const handleLike = async (templateId, isFromLatest) => {
@@ -163,9 +163,24 @@ function Home() {
             </section>
 
             <section>
-                {/*<h2>Tag Cloud</h2>*/}
+                {/* Tag Cloud */}
+                <h2>Tag Cloud</h2>
                 <div>
-                    <TagCloud tags={tags}/>
+                    {tags.map((tag) => (
+                        <span
+                            key={tag.id}
+                            style={{
+                                padding: '5px 10px',
+                                margin: '5px',
+                                backgroundColor: '#e0e0e0',
+                                borderRadius: '15px',
+                                cursor: 'pointer',
+                            }}
+                            onClick={() => handleTagClick(tag.id)}
+                        >
+                        {tag.name} ({tag.count})
+                    </span>
+                    ))}
                 </div>
             </section>
         </div>

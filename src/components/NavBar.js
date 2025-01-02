@@ -62,7 +62,7 @@ function NavBar({ isAuthenticated, userRole, handleLogout }) {
                         ) : (
                             <>
                                 <Nav.Link as={Link} to="/login">
-                                    Login
+                                    {t('login') || 'Login'}
                                 </Nav.Link>
                                 <Nav.Link as={Link} to="/register">
                                     Register

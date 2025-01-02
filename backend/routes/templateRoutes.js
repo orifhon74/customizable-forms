@@ -12,22 +12,37 @@ const { Template, Form, TemplateTag, Tag, Comment, Like } = require('../models')
  * - Public endpoint: search by title or description
  */
 router.get('/search', async (req, res) => {
-    const { search } = req.query;
+    const { query, tag } = req.query;
+
     try {
-        const whereClause = search
+        const whereClause = query
             ? {
                 [Op.or]: [
-                    { title: { [Op.like]: `%${search}%` } },
-                    { description: { [Op.like]: `%${search}%` } },
+                    { title: { [Op.like]: `%${query}%` } },
+                    { description: { [Op.like]: `%${query}%` } },
                 ],
             }
             : {};
 
-        const templates = await Template.findAll({ where: whereClause });
-        return res.json(templates);
+        const includeClause = tag
+            ? [
+                {
+                    model: Tag,
+                    where: { name: tag },
+                    attributes: [],
+                },
+            ]
+            : [];
+
+        const templates = await Template.findAll({
+            where: whereClause,
+            include: includeClause,
+        });
+
+        res.json(templates);
     } catch (err) {
-        console.error('Error searching templates:', err);
-        return res.status(500).json({ error: 'Failed to search templates' });
+        console.error('Error searching templates:', err.message);
+        res.status(500).json({ error: 'Failed to search templates' });
     }
 });
 
@@ -310,11 +325,14 @@ router.post('/', authenticate, async (req, res) => {
             custom_checkbox4_question: checkboxQuestions[3] || null,
         });
 
-        // Handle tags
-        if (tags.length > 0) {
+        // Inside your POST /api/templates route
+        if (tags && Array.isArray(tags)) {
             for (const tagName of tags) {
-                const [tag] = await Tag.findOrCreate({ where: { name: tagName } });
-                await template.addTag(tag);
+                console.log(`Processing tag: ${tagName}`); // Debug log
+                const [tag, created] = await Tag.findOrCreate({ where: { name: tagName } });
+                console.log(`Tag created/found: ${tagName}, ID: ${tag.id}`); // Debug log
+
+                await TemplateTag.create({ template_id: template.id, tag_id: tag.id });
             }
         }
 
@@ -332,12 +350,19 @@ router.post('/', authenticate, async (req, res) => {
  * PUT /api/templates/:id
  * - Auth required: only admin or owner
  */
+/**
+ * PUT /api/templates/:id
+ * - Auth required: only admin or owner
+ */
 router.put('/:id', authenticate, async (req, res) => {
     try {
         const { id } = req.params;
-        const updates = req.body;
+        const { tags, ...updates } = req.body; // Extract tags from the request body
 
-        const template = await Template.findByPk(id);
+        const template = await Template.findByPk(id, {
+            include: [Tag], // Include associated tags
+        });
+
         if (!template) {
             return res.status(404).json({ error: 'Template not found' });
         }
@@ -345,8 +370,29 @@ router.put('/:id', authenticate, async (req, res) => {
             return res.status(403).json({ error: 'Unauthorized to update' });
         }
 
+        // Update template fields
         await template.update(updates);
-        return res.json({ message: 'Template updated successfully', template });
+
+        // Update tags if provided
+        if (tags && Array.isArray(tags)) {
+            // Find or create tags
+            const tagInstances = await Promise.all(
+                tags.map(async (tagName) => {
+                    const [tag] = await Tag.findOrCreate({ where: { name: tagName } });
+                    return tag;
+                })
+            );
+
+            // Set tags for the template
+            await template.setTags(tagInstances);
+        }
+
+        // Fetch the updated template with tags
+        const updatedTemplate = await Template.findByPk(id, {
+            include: [Tag],
+        });
+
+        return res.json({ message: 'Template updated successfully', template: updatedTemplate });
     } catch (err) {
         console.error('Error updating template:', err);
         return res.status(500).json({ error: 'Failed to update template' });
