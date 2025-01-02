@@ -309,7 +309,7 @@ function TemplateForm() {
                     <Form.Group controlId={`intQuestion${i}`} key={i} className="mb-3">
                         <Form.Label>Integer Question {i + 1}</Form.Label>
                         <Form.Control
-                            type="number"
+                            type="text"
                             placeholder={`Integer Question ${i + 1}`}
                             value={val}
                             onChange={(e) =>
