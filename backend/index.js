@@ -21,7 +21,7 @@ const app = express();
 // CORS setup
 const allowedOrigins = [
     'http://localhost:3000',
-    // Add your production front-end domain here if needed
+    'https://customizable-forms-xi.vercel.app',
 ];
 
 app.use(cors({
