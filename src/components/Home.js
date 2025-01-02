@@ -178,7 +178,7 @@ function Home() {
                             }}
                             onClick={() => handleTagClick(tag.id)}
                         >
-                        {tag.name} ({tag.count})
+                        {tag.name}
                     </span>
                     ))}
                 </div>

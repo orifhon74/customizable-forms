@@ -7,42 +7,41 @@ const authenticate = require('../middleware/authenticate');
 const sequelize = require('../db');
 const { Template, Form, TemplateTag, Tag, Comment, Like } = require('../models');
 
-/**
- * GET /api/templates/search?query=...&tag=...
- * - Public endpoint: search by title, description, or tag
- */
 router.get('/search', async (req, res) => {
     const { query, tag } = req.query;
 
+    console.log('Query Params:', { query, tag });
+
     try {
-        // Where clause for text search (title or description)
-        const whereClause = query
-            ? {
+        let whereClause = {};
+        let includeClause = [];
+
+        // Add query-based search for title/description
+        if (query) {
+            whereClause = {
                 [Op.or]: [
                     { title: { [Op.like]: `%${query}%` } },
                     { description: { [Op.like]: `%${query}%` } },
                 ],
-            }
-            : {};
+            };
+        }
 
-        // Include clause for tag search
-        const includeClause = tag
-            ? [
-                {
-                    model: Tag,
-                    where: { name: { [Op.like]: `%${tag.toLowerCase()}%` } }, // Case-insensitive matching
-                    attributes: ['id', 'name'],
-                    through: { attributes: [] }, // Exclude join table attributes
-                },
-            ]
-            : [];
+        // Add tag-based search
+        if (tag) {
+            includeClause.push({
+                model: Tag,
+                where: { id: tag }, // Search for templates with the given tag ID
+                through: { attributes: [] }, // Exclude join table attributes
+            });
+        }
 
+        // Fetch templates based on query and tag
         const templates = await Template.findAll({
             where: whereClause,
             include: includeClause,
-            attributes: ['id', 'title', 'description', 'image_url', 'user_id'],
         });
 
+        console.log('Templates Fetched:', templates);
         res.json(templates);
     } catch (err) {
         console.error('Error searching templates:', err.message);

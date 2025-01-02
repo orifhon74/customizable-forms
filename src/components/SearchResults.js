@@ -1,76 +1,78 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Card, Row, Col } from 'react-bootstrap';
 
 function SearchResults() {
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const searchQuery = queryParams.get('q') || '';
-    const searchType = queryParams.get('type') || 'text'; // Default to text search
+    const searchType = queryParams.get('type') || 'text';
 
     const [results, setResults] = useState([]);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const doSearch = async () => {
+        const fetchSearchResults = async () => {
             if (!searchQuery) return;
 
             try {
-                const url =
-                    searchType === 'tag'
-                        ? `http://localhost:5001/api/templates/search?tag=${searchQuery.toLowerCase()}`
-                        : `http://localhost:5001/api/templates/search?query=${searchQuery}`;
-                const resp = await fetch(url);
-                if (!resp.ok) throw new Error('Search failed');
-                const data = await resp.json();
+                let url = `http://localhost:5001/api/templates/search`;
+
+                if (searchType === 'tag') {
+                    url += `?tag=${searchQuery}`; // Pass the tag name
+                } else {
+                    url += `?query=${searchQuery}`; // Pass the text query
+                }
+
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Search failed');
+                const data = await response.json();
                 setResults(data);
             } catch (err) {
                 console.error(err);
-                setError(err.message);
+                setError('Failed to fetch search results.');
             }
         };
 
-        doSearch();
+        fetchSearchResults();
     }, [searchQuery, searchType]);
 
-    if (error) return <p style={{ color: 'red' }}>Error: {error}</p>;
+    if (error) return <div style={{ color: 'red' }}>{error}</div>;
 
     return (
-        <div className="mt-4">
-            <h2>Search Results for: {searchQuery}</h2>
+        <div>
+            <h2>Search Results </h2>
             {results.length === 0 ? (
                 <p>No results found.</p>
             ) : (
-                <Row>
-                    {results.map((tmpl) => (
-                        <Col md={4} key={tmpl.id} className="mb-3">
-                            <Card>
-                                {tmpl.image_url && (
-                                    <Card.Img
-                                        variant="top"
-                                        src={tmpl.image_url}
-                                        style={{ objectFit: 'cover', height: '200px' }}
-                                    />
-                                )}
-                                <Card.Body>
-                                    <Card.Title>{tmpl.title}</Card.Title>
-                                    <Card.Text>{tmpl.description}</Card.Text>
-                                    {tmpl.Tags && tmpl.Tags.length > 0 && (
-                                        <p>
-                                            <strong>Tags:</strong> {tmpl.Tags.map((tag) => tag.name).join(', ')}
-                                        </p>
-                                    )}
-                                    <p>
-                                        <strong>Author:</strong> {tmpl.user_id}
-                                    </p>
-                                    <a href={`/templates/${tmpl.id}`} className="btn btn-primary">
-                                        View Details
-                                    </a>
-                                </Card.Body>
-                            </Card>
-                        </Col>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
+                    {results.map((template) => (
+                        <div
+                            key={template.id}
+                            style={{
+                                border: '1px solid #ccc',
+                                padding: '20px',
+                                borderRadius: '8px',
+                                width: '250px',
+                            }}
+                        >
+                            <h3>{template.title}</h3>
+                            <p>{template.description}</p>
+                            <button
+                                onClick={() => window.location.href = `/templates/${template.id}`}
+                                style={{
+                                    backgroundColor: '#007bff',
+                                    color: '#fff',
+                                    border: 'none',
+                                    padding: '10px',
+                                    borderRadius: '5px',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                View Details
+                            </button>
+                        </div>
                     ))}
-                </Row>
+                </div>
             )}
         </div>
     );

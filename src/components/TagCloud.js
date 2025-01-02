@@ -22,8 +22,9 @@ function TagCloud() {
         fetchTagCloud();
     }, []);
 
-    const handleTagClick = (tagName) => {
-        navigate(`/search-results?q=${tagName}`);
+    const handleTagClick = (tag) => {
+        // Navigate with the tag name (instead of ID, for simplicity)
+        navigate(`/search-results?q=${tag.name}&type=tag`);
     };
 
     if (error) {
@@ -45,7 +46,7 @@ function TagCloud() {
                     }}
                     onClick={() => handleTagClick(tag.name)}
                 >
-                    {tag.name} ({tag.templateCount})
+                    {tag.name}
                 </span>
             ))}
         </div>
