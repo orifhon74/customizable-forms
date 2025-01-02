@@ -8,13 +8,14 @@ const sequelize = require('../db');
 const { Template, Form, TemplateTag, Tag, Comment, Like } = require('../models');
 
 /**
- * GET /api/templates/search?search=...
- * - Public endpoint: search by title or description
+ * GET /api/templates/search?query=...&tag=...
+ * - Public endpoint: search by title, description, or tag
  */
 router.get('/search', async (req, res) => {
     const { query, tag } = req.query;
 
     try {
+        // Where clause for text search (title or description)
         const whereClause = query
             ? {
                 [Op.or]: [
@@ -24,12 +25,14 @@ router.get('/search', async (req, res) => {
             }
             : {};
 
+        // Include clause for tag search
         const includeClause = tag
             ? [
                 {
                     model: Tag,
-                    where: { name: tag },
-                    attributes: [],
+                    where: { name: { [Op.like]: `%${tag.toLowerCase()}%` } }, // Case-insensitive matching
+                    attributes: ['id', 'name'],
+                    through: { attributes: [] }, // Exclude join table attributes
                 },
             ]
             : [];
@@ -37,6 +40,7 @@ router.get('/search', async (req, res) => {
         const templates = await Template.findAll({
             where: whereClause,
             include: includeClause,
+            attributes: ['id', 'title', 'description', 'image_url', 'user_id'],
         });
 
         res.json(templates);
