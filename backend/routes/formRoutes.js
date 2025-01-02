@@ -10,15 +10,14 @@ const authenticate = require('../middleware/authenticate');
 
 /**
  * GET /api/forms
- * - Auth required: fetch all forms for the logged-in user
+ * Fetch all forms
  */
 router.get('/', authenticate, async (req, res) => {
     try {
         const forms = await Form.findAll({
-            where: { user_id: req.user.id },
             include: [
-                { model: Template, attributes: ['id', 'title'] },
-                { model: User, attributes: ['id', 'username', 'email'] },
+                { model: Template, attributes: ['title'] },
+                { model: User, attributes: ['username'] },
             ],
         });
         res.json(forms);
@@ -30,25 +29,25 @@ router.get('/', authenticate, async (req, res) => {
 
 /**
  * GET /api/forms/:id
- * - Auth required: must be the form owner or admin
+ * Fetch details of a specific form
  */
 router.get('/:id', authenticate, async (req, res) => {
     try {
         const form = await Form.findByPk(req.params.id, {
-            include: [{ model: Template }, { model: User }],
+            include: [
+                { model: Template },
+                { model: User, attributes: ['username'] },
+            ],
         });
+
         if (!form) {
             return res.status(404).json({ error: 'Form not found' });
         }
 
-        if (form.user_id !== req.user.id && req.user.role !== 'admin') {
-            return res.status(403).json({ error: 'Access denied' });
-        }
-
-        return res.json(form);
+        res.json(form);
     } catch (err) {
-        console.error('Error fetching form:', err);
-        res.status(500).json({ error: 'Failed to fetch form' });
+        console.error('Error fetching form details:', err);
+        res.status(500).json({ error: 'Failed to fetch form details' });
     }
 });
 

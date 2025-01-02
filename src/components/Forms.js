@@ -1,5 +1,5 @@
-// src/components/Forms.js
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 function Forms() {
     const [forms, setForms] = useState([]);
@@ -33,13 +33,14 @@ function Forms() {
 
     return (
         <div style={{ margin: '20px' }}>
-            <h1>Forms</h1>
+            <h1>Submitted Forms</h1>
             <table>
                 <thead>
                 <tr>
                     <th>Template</th>
                     <th>Submitted By</th>
                     <th>Date</th>
+                    <th>Actions</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -48,6 +49,9 @@ function Forms() {
                         <td>{form.Template?.title || 'N/A'}</td>
                         <td>{form.User?.username || 'N/A'}</td>
                         <td>{new Date(form.createdAt).toLocaleDateString()}</td>
+                        <td>
+                            <Link to={`/forms/${form.id}`}>View Form</Link>
+                        </td>
                     </tr>
                 ))}
                 </tbody>

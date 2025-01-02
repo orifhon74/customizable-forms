@@ -19,6 +19,7 @@ import SearchResults from './components/SearchResults';
 import NavBar from './components/NavBar';
 import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
+import FormDetails from "./components/FormDetails";
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -94,6 +95,10 @@ function App() {
                             <Route
                                 path="/forms"
                                 element={isAuthenticated ? <Forms /> : <Navigate to="/login" />}
+                            />
+                            <Route
+                                path="/forms/:formId"
+                                element={isAuthenticated ? <FormDetails /> : <Navigate to="/login" />}
                             />
                             <Route
                                 path="/create-template"
