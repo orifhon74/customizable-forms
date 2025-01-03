@@ -1,10 +1,22 @@
 // src/components/TemplateForm.js
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { storage } from '../firebase'; // Firebase storage instance
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Container, Form, Button, Row, Col, Alert, Badge, Card, Spinner } from 'react-bootstrap';
 
+// ----- NEW: React Bootstrap imports -----
+import 'bootstrap/dist/css/bootstrap.min.css';
+import {
+    Container,
+    Form,
+    Button,
+    Alert,
+    Row,
+    Col,
+    Badge,
+    InputGroup,
+} from 'react-bootstrap';
 
 function TemplateForm() {
     const location = useLocation();
@@ -17,7 +29,8 @@ function TemplateForm() {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [accessType, setAccessType] = useState('public');
-    const [topic, setTopic] = useState(''); // "Education", "Quiz", "Other"
+    // ----- NEW: Default topic changed to 'Other' -----
+    const [topic, setTopic] = useState('Other'); // "Education", "Quiz", "Other"
     const [imageFile, setImageFile] = useState(null); // Image upload state
     const [imageUrl, setImageUrl] = useState(''); // Firebase URL for uploaded image
 
@@ -33,10 +46,11 @@ function TemplateForm() {
     const [tags, setTags] = useState([]); // Store tags as an array of strings
     const [tagInput, setTagInput] = useState(''); // Temporary input for the tag field
 
-    const API_URL = process.env.REACT_APP_API_URL;
-
+    // -------------------------------------------------
+    // Tag handlers
+    // -------------------------------------------------
     const handleAddTag = () => {
-        if (tagInput.trim() && !tags.includes(tagInput)) {
+        if (tagInput.trim() && !tags.includes(tagInput.trim())) {
             setTags((prev) => [...prev, tagInput.trim()]);
             setTagInput('');
         }
@@ -46,15 +60,15 @@ function TemplateForm() {
         setTags((prev) => prev.filter((tag) => tag !== tagToRemove));
     };
 
-    // --------------------------------------------
+    // -------------------------------------------------
     // Fetch existing template if editing
-    // --------------------------------------------
+    // -------------------------------------------------
     useEffect(() => {
         if (isEditMode && templateId) {
             const fetchTemplate = async () => {
                 const token = localStorage.getItem('token');
                 try {
-                    const resp = await fetch(`${API_URL}/api/templates/${templateId}`, {
+                    const resp = await fetch(`http://localhost:5001/api/templates/${templateId}`, {
                         headers: { Authorization: `Bearer ${token}` },
                     });
                     if (!resp.ok) throw new Error('Failed to fetch template for editing');
@@ -63,7 +77,7 @@ function TemplateForm() {
                     setTitle(data.title || '');
                     setDescription(data.description || '');
                     setAccessType(data.access_type || 'public');
-                    setTopic(data.topic_id || ''); // Assuming topic_id maps to "Education", etc.
+                    setTopic(data.topic_id || 'Other'); // If no topic, fallback to "Other"
                     setImageUrl(data.image_url || '');
                     setTags(data.tags || []);
 
@@ -99,9 +113,9 @@ function TemplateForm() {
         }
     }, [isEditMode, templateId]);
 
-    // --------------------------------------------
+    // -------------------------------------------------
     // Handle form submission for create/update
-    // --------------------------------------------
+    // -------------------------------------------------
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
@@ -113,47 +127,22 @@ function TemplateForm() {
             return;
         }
 
-        // Default the topic to "Other" if it is not set
-        const topicValue = topic || 'Other';
-
         const url = isEditMode
-            ? `${API_URL}/api/templates/${templateId}`
-            : `${API_URL}/api/templates`;
+            ? `http://localhost:5001/api/templates/${templateId}`
+            : 'http://localhost:5001/api/templates';
         const method = isEditMode ? 'PUT' : 'POST';
-
-        const topicMapping = {
-            Education: 1,
-            Quiz: 2,
-            Other: 3,
-        };
-
-        const mappedQuestions = {
-            custom_string1_question: stringQuestions[0] || '',
-            custom_string2_question: stringQuestions[1] || '',
-            custom_string3_question: stringQuestions[2] || '',
-            custom_string4_question: stringQuestions[3] || '',
-            custom_multiline1_question: multilineQuestions[0] || '',
-            custom_multiline2_question: multilineQuestions[1] || '',
-            custom_multiline3_question: multilineQuestions[2] || '',
-            custom_multiline4_question: multilineQuestions[3] || '',
-            custom_int1_question: intQuestions[0] || '',
-            custom_int2_question: intQuestions[1] || '',
-            custom_int3_question: intQuestions[2] || '',
-            custom_int4_question: intQuestions[3] || '',
-            custom_checkbox1_question: checkboxQuestions[0] || '',
-            custom_checkbox2_question: checkboxQuestions[1] || '',
-            custom_checkbox3_question: checkboxQuestions[2] || '',
-            custom_checkbox4_question: checkboxQuestions[3] || '',
-        };
 
         const requestBody = {
             title,
             description,
             access_type: accessType,
-            topic_id: topicMapping[topicValue], // Default to "Other"
-            image_url: imageUrl,
-            ...mappedQuestions, // Spread the mapped questions here
-            tags: tags.length > 0 ? tags : null,
+            topic_id: topic, // Directly use topic name, assuming backend supports it
+            image_url: imageUrl, // Firebase URL
+            stringQuestions,
+            multilineQuestions,
+            intQuestions,
+            checkboxQuestions,
+            tags,
         };
 
         try {
@@ -165,26 +154,20 @@ function TemplateForm() {
                 },
                 body: JSON.stringify(requestBody),
             });
-
             if (!resp.ok) {
-                const errorData = await resp.json();
-                console.error('API Error Response:', errorData);
-                throw new Error(
-                    `Failed to ${isEditMode ? 'update' : 'create'} template: ${
-                        errorData.message || 'Unknown error'
-                    }`
-                );
+                throw new Error(`Failed to ${isEditMode ? 'update' : 'create'} template`);
             }
 
             setSuccess(`Template ${isEditMode ? 'updated' : 'created'} successfully!`);
             navigate('/templates');
         } catch (err) {
-            console.error('Submission Error:', err.message);
             setError(err.message);
         }
     };
 
-    // Handle image file selection
+    // -------------------------------------------------
+    // Handle image file selection/upload
+    // -------------------------------------------------
     const handleImageUpload = async (e) => {
         const file = e.target?.files?.[0]; // Safely access the file
         if (!file) {
@@ -207,176 +190,217 @@ function TemplateForm() {
         }
     };
 
-    // --------------------------------------------
+    // -------------------------------------------------
     // Render
-    // --------------------------------------------
+    // -------------------------------------------------
     return (
-        <Container className="my-4">
-            <h1 className="text-center">{isEditMode ? 'Edit Template' : 'Create Template'}</h1>
-            {error && <Alert variant="danger">{error}</Alert>}
-            {success && <Alert variant="success">{success}</Alert>}
-            <Form onSubmit={handleSubmit}>
-                <Row className="mb-4">
-                    <Col md={6}>
-                        <Form.Group controlId="formTitle">
-                            <Form.Label>Title</Form.Label>
-                            <Form.Control
-                                type="text"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                required
-                            />
-                        </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                        <Form.Group controlId="formAccessType">
-                            <Form.Label>Access Type</Form.Label>
-                            <Form.Select value={accessType} onChange={(e) => setAccessType(e.target.value)}>
-                                <option value="public">Public</option>
-                                <option value="private">Private</option>
-                            </Form.Select>
-                        </Form.Group>
-                    </Col>
-                </Row>
-                <Form.Group controlId="formDescription" className="mb-4">
-                    <Form.Label>Description</Form.Label>
-                    <Form.Control
-                        as="textarea"
-                        rows={3}
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                    />
-                </Form.Group>
-                <Form.Group controlId="formImage" className="mb-4">
-                    <Form.Label>Image</Form.Label>
-                    <Form.Control type="file" onChange={handleImageUpload} />
-                    {uploading && <Spinner animation="border" size="sm" className="ms-2" />}
-                </Form.Group>
-                <Row className="mb-4">
-                    <Col>
-                        <Form.Group controlId="formTopic">
-                            <Form.Label>Topic</Form.Label>
-                            <Form.Select value={topic} onChange={(e) => setTopic(e.target.value)}>
-                                <option value="">Select a topic</option>
-                                <option value="Education">Education</option>
-                                <option value="Quiz">Quiz</option>
-                                <option value="Other">Other</option>
-                            </Form.Select>
-                        </Form.Group>
-                    </Col>
-                    <Col>
-                        <Form.Group controlId="formTags">
-                            <Form.Label>Tags</Form.Label>
-                            <div className="d-flex">
-                                <Form.Control
-                                    type="text"
-                                    placeholder="Enter a tag"
-                                    value={tagInput}
-                                    onChange={(e) => setTagInput(e.target.value)}
-                                />
-                                <Button variant="secondary" className="ms-2" onClick={handleAddTag}>
-                                    Add
-                                </Button>
-                            </div>
-                            <div className="mt-2">
-                                {tags.map((tag, index) => (
-                                    <Badge
-                                        key={index}
-                                        bg="secondary"
-                                        className="me-1"
-                                        style={{ cursor: 'pointer' }}
-                                        onClick={() => handleRemoveTag(tag)}
-                                    >
-                                        {tag} ✕
-                                    </Badge>
-                                ))}
-                            </div>
-                        </Form.Group>
-                    </Col>
-                </Row>
+        // Dark mode background and text
+        <div className="bg-dark text-light min-vh-100 py-4">
+            <Container>
+                <h1 className="mb-4">
+                    {isEditMode ? 'Edit Template' : 'Create Template'}
+                </h1>
 
-                {/* String Questions */}
-                <hr />
-                <h3>String Questions</h3>
-                {stringQuestions.map((val, i) => (
-                    <Form.Group controlId={`stringQuestion${i}`} key={i} className="mb-3">
-                        <Form.Label>String Question {i + 1}</Form.Label>
+                {/* Error / Success Messages */}
+                {error && <Alert variant="danger">{error}</Alert>}
+                {success && <Alert variant="success">{success}</Alert>}
+
+                <Form onSubmit={handleSubmit}>
+                    {/* Title */}
+                    <Form.Group className="mb-3" controlId="formTitle">
+                        <Form.Label>Title:</Form.Label>
                         <Form.Control
                             type="text"
-                            placeholder={`String Question ${i + 1}`}
-                            value={val}
-                            onChange={(e) =>
-                                setStringQuestions((prev) =>
-                                    prev.map((q, idx) => (idx === i ? e.target.value : q))
-                                )
-                            }
+                            placeholder="Enter a title"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            required
                         />
                     </Form.Group>
-                ))}
 
-                {/* Multiline Questions */}
-                <hr />
-                <h3>Multiline Questions</h3>
-                {multilineQuestions.map((val, i) => (
-                    <Form.Group controlId={`multilineQuestion${i}`} key={i} className="mb-3">
-                        <Form.Label>Multiline Question {i + 1}</Form.Label>
+                    {/* Description */}
+                    <Form.Group className="mb-3" controlId="formDescription">
+                        <Form.Label>Description:</Form.Label>
                         <Form.Control
                             as="textarea"
                             rows={3}
-                            placeholder={`Multiline Question ${i + 1}`}
-                            value={val}
-                            onChange={(e) =>
-                                setMultilineQuestions((prev) =>
-                                    prev.map((q, idx) => (idx === i ? e.target.value : q))
-                                )
-                            }
+                            placeholder="Enter a description"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
                         />
                     </Form.Group>
-                ))}
 
-                {/* Integer Questions */}
-                <hr />
-                <h3>Integer Questions</h3>
-                {intQuestions.map((val, i) => (
-                    <Form.Group controlId={`intQuestion${i}`} key={i} className="mb-3">
-                        <Form.Label>Integer Question {i + 1}</Form.Label>
+                    {/* Access Type */}
+                    <Form.Group className="mb-3" controlId="formAccessType">
+                        <Form.Label>Access Type:</Form.Label>
+                        <Form.Select
+                            value={accessType}
+                            onChange={(e) => setAccessType(e.target.value)}
+                        >
+                            <option value="public">Public</option>
+                            <option value="private">Private</option>
+                        </Form.Select>
+                    </Form.Group>
+
+                    {/* Topic */}
+                    <Form.Group className="mb-3" controlId="formTopic">
+                        <Form.Label>Topic:</Form.Label>
+                        <Form.Select
+                            value={topic}
+                            onChange={(e) => setTopic(e.target.value)}
+                        >
+                            <option value="Education">Education</option>
+                            <option value="Quiz">Quiz</option>
+                            <option value="Other">Other</option>
+                        </Form.Select>
+                    </Form.Group>
+
+                    {/* Image Upload */}
+                    <Form.Group className="mb-3" controlId="formImageUpload">
+                        <Form.Label>Image (Upload to Firebase):</Form.Label>
                         <Form.Control
-                            type="text"
-                            placeholder={`Integer Question ${i + 1}`}
-                            value={val}
-                            onChange={(e) =>
-                                setIntQuestions((prev) =>
-                                    prev.map((q, idx) => (idx === i ? e.target.value : q))
-                                )
-                            }
+                            type="file"
+                            onChange={handleImageUpload}
+                            disabled={uploading}
                         />
+                        {uploading && (
+                            <Form.Text className="text-muted">Uploading...</Form.Text>
+                        )}
+                        {imageUrl && (
+                            <div className="mt-2">
+                                <img
+                                    src={imageUrl}
+                                    alt="Uploaded"
+                                    style={{ width: '150px', border: '1px solid #999' }}
+                                />
+                            </div>
+                        )}
                     </Form.Group>
-                ))}
 
-                {/* Checkbox Questions */}
-                <hr />
-                <h3>Checkbox Questions</h3>
-                {checkboxQuestions.map((val, i) => (
-                    <Form.Group controlId={`checkboxQuestion${i}`} key={i} className="mb-3">
-                        <Form.Label>Checkbox Question {i + 1}</Form.Label>
-                        <Form.Control
-                            type="text"
-                            placeholder={`Checkbox Question ${i + 1}`}
-                            value={val}
-                            onChange={(e) =>
-                                setCheckboxQuestions((prev) =>
-                                    prev.map((q, idx) => (idx === i ? e.target.value : q))
-                                )
-                            }
-                        />
+                    {/* Tags */}
+                    <Form.Group className="mb-3" controlId="formTags">
+                        <Form.Label>Tags:</Form.Label>
+                        <InputGroup className="mb-2">
+                            <Form.Control
+                                type="text"
+                                placeholder="Enter a tag"
+                                value={tagInput}
+                                onChange={(e) => setTagInput(e.target.value)}
+                            />
+                            <Button variant="primary" onClick={handleAddTag}>
+                                Add Tag
+                            </Button>
+                        </InputGroup>
+                        <div>
+                            {tags.map((tag, index) => (
+                                <Badge
+                                    bg="secondary"
+                                    className="me-2"
+                                    key={index}
+                                >
+                                    {tag}{' '}
+                                    <Button
+                                        variant="outline-light"
+                                        size="sm"
+                                        onClick={() => handleRemoveTag(tag)}
+                                        style={{ border: 'none' }}
+                                    >
+                                        ×
+                                    </Button>
+                                </Badge>
+                            ))}
+                        </div>
                     </Form.Group>
-                ))}
 
-                <Button variant="primary" type="submit" className="w-100">
-                    {isEditMode ? 'Save Changes' : 'Create Template'}
-                </Button>
-            </Form>
-        </Container>
+                    <hr />
+
+                    {/* String Questions */}
+                    <h3>String Questions</h3>
+                    {stringQuestions.map((val, i) => (
+                        <Form.Group className="mb-3" key={i}>
+                            <Form.Label>String Question {i + 1}</Form.Label>
+                            <Form.Control
+                                type="text"
+                                placeholder={`String Question ${i + 1}`}
+                                value={val}
+                                onChange={(e) =>
+                                    setStringQuestions((prev) =>
+                                        prev.map((q, idx) => (idx === i ? e.target.value : q))
+                                    )
+                                }
+                            />
+                        </Form.Group>
+                    ))}
+
+                    <hr />
+
+                    {/* Multiline Questions */}
+                    <h3>Multiline Questions</h3>
+                    {multilineQuestions.map((val, i) => (
+                        <Form.Group className="mb-3" key={i}>
+                            <Form.Label>Multiline Question {i + 1}</Form.Label>
+                            <Form.Control
+                                as="textarea"
+                                rows={3}
+                                placeholder={`Multiline Question ${i + 1}`}
+                                value={val}
+                                onChange={(e) =>
+                                    setMultilineQuestions((prev) =>
+                                        prev.map((q, idx) => (idx === i ? e.target.value : q))
+                                    )
+                                }
+                            />
+                        </Form.Group>
+                    ))}
+
+                    <hr />
+
+                    {/* Integer Questions */}
+                    <h3>Integer Questions</h3>
+                    {intQuestions.map((val, i) => (
+                        <Form.Group className="mb-3" key={i}>
+                            <Form.Label>Integer Question {i + 1}</Form.Label>
+                            <Form.Control
+                                type="text"
+                                placeholder={`Integer Question ${i + 1}`}
+                                value={val}
+                                onChange={(e) =>
+                                    setIntQuestions((prev) =>
+                                        prev.map((q, idx) => (idx === i ? e.target.value : q))
+                                    )
+                                }
+                            />
+                        </Form.Group>
+                    ))}
+
+                    <hr />
+
+                    {/* Checkbox Questions */}
+                    <h3>Checkbox Questions</h3>
+                    {checkboxQuestions.map((val, i) => (
+                        <Form.Group className="mb-3" key={i}>
+                            <Form.Label>Checkbox Question {i + 1}</Form.Label>
+                            <Form.Control
+                                type="text"
+                                placeholder={`Checkbox Question ${i + 1}`}
+                                value={val}
+                                onChange={(e) =>
+                                    setCheckboxQuestions((prev) =>
+                                        prev.map((q, idx) => (idx === i ? e.target.value : q))
+                                    )
+                                }
+                            />
+                        </Form.Group>
+                    ))}
+
+                    <hr />
+
+                    <Button variant="success" type="submit">
+                        {isEditMode ? 'Save Changes' : 'Create Template'}
+                    </Button>
+                </Form>
+            </Container>
+        </div>
     );
 }
 
