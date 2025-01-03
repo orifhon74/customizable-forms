@@ -26,9 +26,9 @@ function TemplateForm() {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [accessType, setAccessType] = useState('public');
-    const [topic, setTopic] = useState(''); // "Education", "Quiz", "Other"
-    const [imageFile, setImageFile] = useState(null); // Image upload state
+    const [topic, setTopic] = useState('Other'); // Default to "Other"
     const [imageUrl, setImageUrl] = useState(''); // Firebase URL for uploaded image
+    const [uploading, setUploading] = useState(false);
 
     const [stringQuestions, setStringQuestions] = useState(['', '', '', '']);
     const [multilineQuestions, setMultilineQuestions] = useState(['', '', '', '']);
@@ -37,25 +37,25 @@ function TemplateForm() {
 
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
-    const [uploading, setUploading] = useState(false);
 
     const [tags, setTags] = useState([]); // Store tags as an array of strings
     const [tagInput, setTagInput] = useState(''); // Temporary input for the tag field
 
+    // Handle adding a new tag
     const handleAddTag = () => {
-        if (tagInput.trim() && !tags.includes(tagInput)) {
-            setTags((prev) => [...prev, tagInput.trim()]);
+        const trimmedTag = tagInput.trim();
+        if (trimmedTag && !tags.includes(trimmedTag)) {
+            setTags((prev) => [...prev, trimmedTag]);
             setTagInput('');
         }
     };
 
+    // Handle removing an existing tag
     const handleRemoveTag = (tagToRemove) => {
         setTags((prev) => prev.filter((tag) => tag !== tagToRemove));
     };
 
-    // --------------------------------------------
-    // Fetch existing template if editing
-    // --------------------------------------------
+    // Fetch existing template data if in edit mode
     useEffect(() => {
         if (isEditMode && templateId) {
             const fetchTemplate = async () => {
@@ -70,9 +70,9 @@ function TemplateForm() {
                     setTitle(data.title || '');
                     setDescription(data.description || '');
                     setAccessType(data.access_type || 'public');
-                    setTopic(data.topic_id || ''); // Assuming topic_id maps to "Education", etc.
+                    setTopic(data.topic_id ? mapTopicIdToName(data.topic_id) : 'Other');
                     setImageUrl(data.image_url || '');
-                    setTags(data.tags || []);
+                    setTags(data.tags ? data.tags.map(tag => tag.name) : []);
 
                     setStringQuestions([
                         data.custom_string1_question || '',
@@ -106,9 +106,17 @@ function TemplateForm() {
         }
     }, [isEditMode, templateId]);
 
-    // --------------------------------------------
+    // Function to map topic_id to topic name
+    const mapTopicIdToName = (topicId) => {
+        const mapping = {
+            1: 'Education',
+            2: 'Quiz',
+            3: 'Other',
+        };
+        return mapping[topicId] || 'Other';
+    };
+
     // Handle form submission for create/update
-    // --------------------------------------------
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
@@ -120,6 +128,9 @@ function TemplateForm() {
             return;
         }
 
+        // Ensure that topic is set to "Other" if not selected
+        const selectedTopic = topic || 'Other';
+
         const url = isEditMode
             ? `http://localhost:5001/api/templates/${templateId}`
             : 'http://localhost:5001/api/templates';
@@ -129,7 +140,7 @@ function TemplateForm() {
             title,
             description,
             access_type: accessType,
-            topic_id: topic, // Directly use topic name, assuming backend supports it
+            topic_id: selectedTopic, // Send topic name; backend will map to ID
             image_url: imageUrl, // Firebase URL
             stringQuestions,
             multilineQuestions,
@@ -148,9 +159,11 @@ function TemplateForm() {
                 body: JSON.stringify(requestBody),
             });
             if (!resp.ok) {
-                throw new Error(`Failed to ${isEditMode ? 'update' : 'create'} template`);
+                const respData = await resp.json();
+                throw new Error(respData.error || `Failed to ${isEditMode ? 'update' : 'create'} template`);
             }
 
+            const respData = await resp.json();
             setSuccess(`Template ${isEditMode ? 'updated' : 'created'} successfully!`);
             navigate('/templates');
         } catch (err) {
@@ -158,22 +171,20 @@ function TemplateForm() {
         }
     };
 
-    // Handle image file selection
+    // Handle image file selection and upload
     const handleImageUpload = async (e) => {
-        const file = e.target?.files?.[0]; // Safely access the file
+        const file = e.target?.files?.[0];
         if (!file) {
             setError('No file selected');
             return;
         }
-
-        setImageFile(file);
 
         const storageRef = ref(storage, `template-images/${Date.now()}-${file.name}`);
         try {
             setUploading(true);
             const snapshot = await uploadBytes(storageRef, file);
             const url = await getDownloadURL(snapshot.ref);
-            setImageUrl(url); // Set the Firebase URL
+            setImageUrl(url);
             setUploading(false);
         } catch (err) {
             setError('Failed to upload image');
@@ -181,14 +192,22 @@ function TemplateForm() {
         }
     };
 
-    // --------------------------------------------
-    // Render
-    // --------------------------------------------
+    // Handle "Enter" key press for adding tags
+    const handleTagKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAddTag();
+        }
+    };
+
+    // Render the form
     return (
         <Container className="my-5">
             <Row className="justify-content-center">
                 <Col xs={12} md={8}>
-                    <h1 className="mb-4 text-center">{isEditMode ? 'Edit Template' : 'Create Template'}</h1>
+                    <h1 className="mb-4 text-center">
+                        {isEditMode ? 'Edit Template' : 'Create Template'}
+                    </h1>
 
                     {error && <Alert variant="danger">{error}</Alert>}
                     {success && <Alert variant="success">{success}</Alert>}
@@ -196,7 +215,9 @@ function TemplateForm() {
                     <Form onSubmit={handleSubmit}>
                         {/* Title */}
                         <Form.Group controlId="formTitle" className="mb-3">
-                            <Form.Label>Title<span className="text-danger">*</span></Form.Label>
+                            <Form.Label>
+                                Title <span className="text-danger">*</span>
+                            </Form.Label>
                             <Form.Control
                                 type="text"
                                 placeholder="Enter title"
@@ -237,10 +258,9 @@ function TemplateForm() {
                                 value={topic}
                                 onChange={(e) => setTopic(e.target.value)}
                             >
-                                <option value="">Select a topic</option>
+                                <option value="Other">Other</option>
                                 <option value="Education">Education</option>
                                 <option value="Quiz">Quiz</option>
-                                <option value="Other">Other</option>
                             </Form.Select>
                         </Form.Group>
 
@@ -253,13 +273,18 @@ function TemplateForm() {
                                 onChange={handleImageUpload}
                             />
                             {uploading && (
-                                <div className="mt-2">
-                                    <Spinner animation="border" size="sm" /> Uploading...
+                                <div className="mt-2 d-flex align-items-center">
+                                    <Spinner animation="border" size="sm" className="me-2" />
+                                    <span>Uploading...</span>
                                 </div>
                             )}
                             {imageUrl && (
                                 <div className="mt-2">
-                                    <img src={imageUrl} alt="Uploaded" style={{ maxWidth: '100%', height: 'auto' }} />
+                                    <img
+                                        src={imageUrl}
+                                        alt="Uploaded"
+                                        style={{ maxWidth: '100%', height: 'auto', borderRadius: '5px' }}
+                                    />
                                 </div>
                             )}
                         </Form.Group>
@@ -273,12 +298,7 @@ function TemplateForm() {
                                     placeholder="Enter a tag"
                                     value={tagInput}
                                     onChange={(e) => setTagInput(e.target.value)}
-                                    onKeyPress={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            handleAddTag();
-                                        }
-                                    }}
+                                    onKeyPress={handleTagKeyPress}
                                 />
                                 <Button variant="secondary" onClick={handleAddTag}>
                                     Add Tag
@@ -291,14 +311,10 @@ function TemplateForm() {
                                         pill
                                         className="me-2 mb-2"
                                         key={index}
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() => handleRemoveTag(tag)}
                                     >
-                                        {tag}{' '}
-                                        <span
-                                            style={{ cursor: 'pointer' }}
-                                            onClick={() => handleRemoveTag(tag)}
-                                        >
-                                            &times;
-                                        </span>
+                                        {tag} &times;
                                     </Badge>
                                 ))}
                             </div>
@@ -308,7 +324,9 @@ function TemplateForm() {
 
                         {/* String Questions */}
                         <Form.Group className="mb-4">
-                            <Form.Label><strong>String Questions</strong></Form.Label>
+                            <Form.Label>
+                                <strong>String Questions</strong>
+                            </Form.Label>
                             {stringQuestions.map((val, i) => (
                                 <Form.Group controlId={`stringQuestion${i}`} className="mb-2" key={i}>
                                     <Form.Control
@@ -329,7 +347,9 @@ function TemplateForm() {
 
                         {/* Multiline Questions */}
                         <Form.Group className="mb-4">
-                            <Form.Label><strong>Multiline Questions</strong></Form.Label>
+                            <Form.Label>
+                                <strong>Multiline Questions</strong>
+                            </Form.Label>
                             {multilineQuestions.map((val, i) => (
                                 <Form.Group controlId={`multilineQuestion${i}`} className="mb-2" key={i}>
                                     <Form.Control
@@ -351,7 +371,9 @@ function TemplateForm() {
 
                         {/* Integer Questions */}
                         <Form.Group className="mb-4">
-                            <Form.Label><strong>Integer Questions</strong></Form.Label>
+                            <Form.Label>
+                                <strong>Integer Questions</strong>
+                            </Form.Label>
                             {intQuestions.map((val, i) => (
                                 <Form.Group controlId={`intQuestion${i}`} className="mb-2" key={i}>
                                     <Form.Control
@@ -372,7 +394,9 @@ function TemplateForm() {
 
                         {/* Checkbox Questions */}
                         <Form.Group className="mb-4">
-                            <Form.Label><strong>Checkbox Questions</strong></Form.Label>
+                            <Form.Label>
+                                <strong>Checkbox Questions</strong>
+                            </Form.Label>
                             {checkboxQuestions.map((val, i) => (
                                 <Form.Group controlId={`checkboxQuestion${i}`} className="mb-2" key={i}>
                                     <Form.Control
@@ -388,6 +412,8 @@ function TemplateForm() {
                                 </Form.Group>
                             ))}
                         </Form.Group>
+
+                        <hr />
 
                         <Button variant="primary" type="submit" className="w-100">
                             {isEditMode ? 'Save Changes' : 'Create Template'}
