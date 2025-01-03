@@ -150,12 +150,11 @@ function TemplateForm() {
             title,
             description,
             access_type: accessType,
-            topic_id: topicMapping[topic] || topicMapping.Other, // Default to "Other"
+            topic_id: topicMapping[topicValue], // Default to "Other"
             image_url: imageUrl,
             ...mappedQuestions, // Spread the mapped questions here
             tags: tags.length > 0 ? tags : null,
         };
-
 
         try {
             const resp = await fetch(url, {
