@@ -38,10 +38,10 @@ function TemplateForm() {
     const [topic, setTopic] = useState('Other');
     const [imageUrl, setImageUrl] = useState('');
 
-    // We store questions in arrays. We’ll send them as arrays to the backend.
+    // We store questions in arrays and send them as arrays to the backend.
     const [stringQuestions, setStringQuestions] = useState(['', '', '', '']);
     const [multilineQuestions, setMultilineQuestions] = useState(['', '', '', '']);
-    // NOTE: Changed type for these "integer" questions so users can type text for the question
+    // Use type="text" for "Integer" question fields so users can type textual prompts.
     const [intQuestions, setIntQuestions] = useState(['', '', '', '']);
     const [checkboxQuestions, setCheckboxQuestions] = useState(['', '', '', '']);
 
@@ -176,7 +176,7 @@ function TemplateForm() {
             title,
             description,
             access_type: accessType,
-            topic_id: topic, // e.g. "Other"
+            topic_id: topic,
             image_url: imageUrl,
             tags,
             stringQuestions,
@@ -378,8 +378,8 @@ function TemplateForm() {
 
                             <hr />
 
-                            {/* Integer Questions (now type="text") */}
-                            <h3>Integer Questions (Text for question prompt)</h3>
+                            {/* "Integer" Questions (text for question prompt) */}
+                            <h3>Integer Questions</h3>
                             {intQuestions.map((val, i) => (
                                 <Form.Group className="mb-3" key={`int-${i}`}>
                                     <Form.Label>Integer Question {i + 1}</Form.Label>

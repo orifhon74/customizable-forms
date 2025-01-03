@@ -388,52 +388,64 @@ router.put('/:id', authenticate, async (req, res) => {
         };
         const mappedTopicId = topicMapping[topic_id] || 3;
 
-        // Update fields
-        template.title = title || template.title;
-        template.description = description || null;
-        template.access_type = access_type || 'public';
-        template.topic_id = mappedTopicId;
-        template.image_url = image_url || null;
+        // Use Template.update(...) in a single call:
+        await Template.update(
+            {
+                title: title || template.title,
+                description: description ?? null,
+                access_type: access_type || 'public',
+                topic_id: mappedTopicId,
+                image_url: image_url || null,
 
-        // Update questions
-        template.custom_string1_question = stringQuestions[0] || '';
-        template.custom_string2_question = stringQuestions[1] || '';
-        template.custom_string3_question = stringQuestions[2] || '';
-        template.custom_string4_question = stringQuestions[3] || '';
-        template.custom_string1_state = !!stringQuestions[0];
-        template.custom_string2_state = !!stringQuestions[1];
-        template.custom_string3_state = !!stringQuestions[2];
-        template.custom_string4_state = !!stringQuestions[3];
+                // Single-line
+                custom_string1_question: stringQuestions[0] || '',
+                custom_string2_question: stringQuestions[1] || '',
+                custom_string3_question: stringQuestions[2] || '',
+                custom_string4_question: stringQuestions[3] || '',
+                custom_string1_state: !!stringQuestions[0],
+                custom_string2_state: !!stringQuestions[1],
+                custom_string3_state: !!stringQuestions[2],
+                custom_string4_state: !!stringQuestions[3],
 
-        template.custom_multiline1_question = multilineQuestions[0] || '';
-        template.custom_multiline2_question = multilineQuestions[1] || '';
-        template.custom_multiline3_question = multilineQuestions[2] || '';
-        template.custom_multiline4_question = multilineQuestions[3] || '';
-        template.custom_multiline1_state = !!multilineQuestions[0];
-        template.custom_multiline2_state = !!multilineQuestions[1];
-        template.custom_multiline3_state = !!multilineQuestions[2];
-        template.custom_multiline4_state = !!multilineQuestions[3];
+                // Multi-line
+                custom_multiline1_question: multilineQuestions[0] || '',
+                custom_multiline2_question: multilineQuestions[1] || '',
+                custom_multiline3_question: multilineQuestions[2] || '',
+                custom_multiline4_question: multilineQuestions[3] || '',
+                custom_multiline1_state: !!multilineQuestions[0],
+                custom_multiline2_state: !!multilineQuestions[1],
+                custom_multiline3_state: !!multilineQuestions[2],
+                custom_multiline4_state: !!multilineQuestions[3],
 
-        template.custom_int1_question = intQuestions[0] || '';
-        template.custom_int2_question = intQuestions[1] || '';
-        template.custom_int3_question = intQuestions[2] || '';
-        template.custom_int4_question = intQuestions[3] || '';
-        template.custom_int1_state = !!intQuestions[0];
-        template.custom_int2_state = !!intQuestions[1];
-        template.custom_int3_state = !!intQuestions[2];
-        template.custom_int4_state = !!intQuestions[3];
+                // "Integer" (text)
+                custom_int1_question: intQuestions[0] || '',
+                custom_int2_question: intQuestions[1] || '',
+                custom_int3_question: intQuestions[2] || '',
+                custom_int4_question: intQuestions[3] || '',
+                custom_int1_state: !!intQuestions[0],
+                custom_int2_state: !!intQuestions[1],
+                custom_int3_state: !!intQuestions[2],
+                custom_int4_state: !!intQuestions[3],
 
-        template.custom_checkbox1_question = checkboxQuestions[0] || '';
-        template.custom_checkbox2_question = checkboxQuestions[1] || '';
-        template.custom_checkbox3_question = checkboxQuestions[2] || '';
-        template.custom_checkbox4_question = checkboxQuestions[3] || '';
-        template.custom_checkbox1_state = !!checkboxQuestions[0];
-        template.custom_checkbox2_state = !!checkboxQuestions[1];
-        template.custom_checkbox3_state = !!checkboxQuestions[2];
-        template.custom_checkbox4_state = !!checkboxQuestions[3];
+                // Checkboxes
+                custom_checkbox1_question: checkboxQuestions[0] || '',
+                custom_checkbox2_question: checkboxQuestions[1] || '',
+                custom_checkbox3_question: checkboxQuestions[2] || '',
+                custom_checkbox4_question: checkboxQuestions[3] || '',
+                custom_checkbox1_state: !!checkboxQuestions[0],
+                custom_checkbox2_state: !!checkboxQuestions[1],
+                custom_checkbox3_state: !!checkboxQuestions[2],
+                custom_checkbox4_state: !!checkboxQuestions[3],
+            },
+            {
+                where: { id },
+            }
+        );
 
-        // Save the template updates
-        await template.save();
+        // We should re-fetch the updated template from the DB
+        const updatedTemplate = await Template.findByPk(id, {
+            include: [Tag],
+        });
 
         // Update tags if provided
         if (tags && Array.isArray(tags)) {
@@ -443,10 +455,11 @@ router.put('/:id', authenticate, async (req, res) => {
                 tagInstances.push(tag);
             }
             // Re-set template tags
-            await template.setTags(tagInstances);
+            await updatedTemplate.setTags(tagInstances);
         }
 
-        const updatedTemplate = await Template.findByPk(id, {
+        // Reload the template with tags after updating
+        await updatedTemplate.reload({
             include: [Tag],
         });
 
