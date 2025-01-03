@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { storage } from '../firebase'; // Firebase storage instance
+import { storage } from '../firebase'; // Firebase storage
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-// React Bootstrap imports
 import 'bootstrap/dist/css/bootstrap.min.css';
 import {
     Container,
@@ -24,38 +23,33 @@ function TemplateForm() {
     const navigate = useNavigate();
     const queryParams = new URLSearchParams(location.search);
 
-    // Determine if we're editing or creating
     const isEditMode = queryParams.get('edit') === 'true';
     const templateId = queryParams.get('templateId');
 
-    // -----------------------------
-    // State for form fields
-    // -----------------------------
+    // Basic fields
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [accessType, setAccessType] = useState('public');
-    // Default topic set to "Other"
-    const [topic, setTopic] = useState('Other');
+    const [topic, setTopic] = useState('Other'); // Default to "Other"
     const [imageUrl, setImageUrl] = useState('');
 
-    // We store questions in arrays and send them as arrays to the backend.
+    // Question arrays
     const [stringQuestions, setStringQuestions] = useState(['', '', '', '']);
     const [multilineQuestions, setMultilineQuestions] = useState(['', '', '', '']);
-    // Use type="text" for "Integer" question fields so users can type textual prompts.
-    const [intQuestions, setIntQuestions] = useState(['', '', '', '']);
+    const [intQuestions, setIntQuestions] = useState(['', '', '', '']); // text-based "integer" questions
     const [checkboxQuestions, setCheckboxQuestions] = useState(['', '', '', '']);
 
     // Tags
     const [tags, setTags] = useState([]);
     const [tagInput, setTagInput] = useState('');
 
-    // UI states
+    // UI State
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
     const [uploading, setUploading] = useState(false);
 
     // -----------------------------
-    // Add/remove tag handlers
+    // Tag handlers
     // -----------------------------
     const handleAddTag = () => {
         if (tagInput.trim() && !tags.includes(tagInput.trim())) {
@@ -69,7 +63,7 @@ function TemplateForm() {
     };
 
     // -----------------------------
-    // Fetch existing template if editing
+    // Fetch if editing
     // -----------------------------
     useEffect(() => {
         if (isEditMode && templateId) {
@@ -81,12 +75,11 @@ function TemplateForm() {
                     const resp = await fetch(`http://localhost:5001/api/templates/${templateId}`, {
                         headers: { Authorization: `Bearer ${token}` },
                     });
-                    if (!resp.ok) {
-                        throw new Error('Failed to fetch template for editing');
-                    }
+                    if (!resp.ok) throw new Error('Failed to fetch template for editing');
+
                     const data = await resp.json();
 
-                    // Populate state with existing template data
+                    // Fill the states
                     setTitle(data.title || '');
                     setDescription(data.description || '');
                     setAccessType(data.access_type || 'public');
@@ -94,7 +87,6 @@ function TemplateForm() {
                     setImageUrl(data.image_url || '');
                     setTags(data.tags || []);
 
-                    // Map existing questions from the template into arrays
                     setStringQuestions([
                         data.custom_string1_question || '',
                         data.custom_string2_question || '',
@@ -128,7 +120,7 @@ function TemplateForm() {
     }, [isEditMode, templateId]);
 
     // -----------------------------
-    // Handle image file selection/upload
+    // Image upload
     // -----------------------------
     const handleImageUpload = async (e) => {
         const file = e.target?.files?.[0];
@@ -152,7 +144,7 @@ function TemplateForm() {
     };
 
     // -----------------------------
-    // Handle form submission (create or update)
+    // Submit (create or update)
     // -----------------------------
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -165,13 +157,12 @@ function TemplateForm() {
             return;
         }
 
-        // Decide if we are creating or updating
         const url = isEditMode
             ? `http://localhost:5001/api/templates/${templateId}`
             : 'http://localhost:5001/api/templates';
         const method = isEditMode ? 'PUT' : 'POST';
 
-        // Prepare the request body, passing arrays for the questions
+        // Send arrays in the request body
         const requestBody = {
             title,
             description,
@@ -203,7 +194,6 @@ function TemplateForm() {
             }
 
             setSuccess(`Template ${isEditMode ? 'updated' : 'created'} successfully!`);
-            // Go back to the list of templates, or wherever you want
             navigate('/templates');
         } catch (err) {
             setError(err.message);
@@ -222,7 +212,6 @@ function TemplateForm() {
                             {isEditMode ? 'Edit Template' : 'Create Template'}
                         </h1>
 
-                        {/* Error/Success Messages */}
                         {error && <Alert variant="danger">{error}</Alert>}
                         {success && <Alert variant="success">{success}</Alert>}
 
@@ -251,7 +240,7 @@ function TemplateForm() {
                                 />
                             </Form.Group>
 
-                            {/* Access Type & Topic */}
+                            {/* Access & Topic */}
                             <Row className="mb-3">
                                 <Form.Group as={Col} controlId="formAccessType">
                                     <Form.Label>Access Type</Form.Label>
@@ -302,7 +291,7 @@ function TemplateForm() {
                             {/* Tags */}
                             <Form.Group className="mb-3" controlId="formTags">
                                 <Form.Label>Tags</Form.Label>
-                                <InputGroup className="mb-2">
+                                <InputGroup>
                                     <Form.Control
                                         type="text"
                                         placeholder="Enter a tag"
@@ -313,7 +302,7 @@ function TemplateForm() {
                                         Add Tag
                                     </Button>
                                 </InputGroup>
-                                <div>
+                                <div className="mt-2">
                                     {tags.map((tag, index) => (
                                         <Badge
                                             bg="dark"
@@ -340,7 +329,7 @@ function TemplateForm() {
                             {/* String Questions */}
                             <h3>String Questions</h3>
                             {stringQuestions.map((val, i) => (
-                                <Form.Group className="mb-3" key={`string-${i}`}>
+                                <Form.Group className="mb-3" key={i}>
                                     <Form.Label>String Question {i + 1}</Form.Label>
                                     <Form.Control
                                         type="text"
@@ -360,7 +349,7 @@ function TemplateForm() {
                             {/* Multiline Questions */}
                             <h3>Multiline Questions</h3>
                             {multilineQuestions.map((val, i) => (
-                                <Form.Group className="mb-3" key={`multi-${i}`}>
+                                <Form.Group className="mb-3" key={i}>
                                     <Form.Label>Multiline Question {i + 1}</Form.Label>
                                     <Form.Control
                                         as="textarea"
@@ -378,10 +367,10 @@ function TemplateForm() {
 
                             <hr />
 
-                            {/* "Integer" Questions (text for question prompt) */}
+                            {/* "Integer" (text) Questions */}
                             <h3>Integer Questions</h3>
                             {intQuestions.map((val, i) => (
-                                <Form.Group className="mb-3" key={`int-${i}`}>
+                                <Form.Group className="mb-3" key={i}>
                                     <Form.Label>Integer Question {i + 1}</Form.Label>
                                     <Form.Control
                                         type="text"
@@ -401,7 +390,7 @@ function TemplateForm() {
                             {/* Checkbox Questions */}
                             <h3>Checkbox Questions</h3>
                             {checkboxQuestions.map((val, i) => (
-                                <Form.Group className="mb-3" key={`checkbox-${i}`}>
+                                <Form.Group className="mb-3" key={i}>
                                     <Form.Label>Checkbox Question {i + 1}</Form.Label>
                                     <Form.Control
                                         type="text"
