@@ -270,14 +270,14 @@ router.post('/', authenticate, async (req, res) => {
             return res.status(400).json({ error: 'Title and topic are required' });
         }
 
+        // Map topic_id from string to integer
         const topicMapping = {
             Education: 1,
             Quiz: 2,
             Other: 3,
         };
-        const mappedTopicId = topicMapping[topic_id] || 3;
 
-        console.log('Request Body:', req.body); // Debug log
+        const mappedTopicId = topicMapping[topic_id] || 3;
 
         const template = await Template.create({
             title,
@@ -287,25 +287,56 @@ router.post('/', authenticate, async (req, res) => {
             topic_id: mappedTopicId,
             image_url: image_url || null,
 
-            // Custom questions
+            // Single-line
             custom_string1_state: !!stringQuestions[0],
             custom_string1_question: stringQuestions[0] || null,
             custom_string2_state: !!stringQuestions[1],
             custom_string2_question: stringQuestions[1] || null,
+            custom_string3_state: !!stringQuestions[2],
+            custom_string3_question: stringQuestions[2] || null,
+            custom_string4_state: !!stringQuestions[3],
+            custom_string4_question: stringQuestions[3] || null,
+
+            // Multi-line
             custom_multiline1_state: !!multilineQuestions[0],
             custom_multiline1_question: multilineQuestions[0] || null,
+            custom_multiline2_state: !!multilineQuestions[1],
+            custom_multiline2_question: multilineQuestions[1] || null,
+            custom_multiline3_state: !!multilineQuestions[2],
+            custom_multiline3_question: multilineQuestions[2] || null,
+            custom_multiline4_state: !!multilineQuestions[3],
+            custom_multiline4_question: multilineQuestions[3] || null,
+
+            // Integer
             custom_int1_state: !!intQuestions[0],
             custom_int1_question: intQuestions[0] || null,
+            custom_int2_state: !!intQuestions[1],
+            custom_int2_question: intQuestions[1] || null,
+            custom_int3_state: !!intQuestions[2],
+            custom_int3_question: intQuestions[2] || null,
+            custom_int4_state: !!intQuestions[3],
+            custom_int4_question: intQuestions[3] || null,
+
+            // Checkboxes
             custom_checkbox1_state: !!checkboxQuestions[0],
             custom_checkbox1_question: checkboxQuestions[0] || null,
+            custom_checkbox2_state: !!checkboxQuestions[1],
+            custom_checkbox2_question: checkboxQuestions[1] || null,
+            custom_checkbox3_state: !!checkboxQuestions[2],
+            custom_checkbox3_question: checkboxQuestions[2] || null,
+            custom_checkbox4_state: !!checkboxQuestions[3],
+            custom_checkbox4_question: checkboxQuestions[3] || null,
         });
 
-        // Tags
+        // Inside your POST /api/templates route
         if (tags && Array.isArray(tags)) {
-            const tagInstances = await Promise.all(
-                tags.map((tagName) => Tag.findOrCreate({ where: { name: tagName } }))
-            );
-            await template.setTags(tagInstances.map(([tag]) => tag));
+            for (const tagName of tags) {
+                // console.log(Processing tag: ${tagName}); // Debug log
+                const [tag, created] = await Tag.findOrCreate({ where: { name: tagName } });
+                // console.log(Tag created/found: ${tagName}, ID: ${tag.id}); // Debug log
+
+                await TemplateTag.create({ template_id: template.id, tag_id: tag.id });
+            }
         }
 
         return res.status(201).json({
@@ -313,10 +344,11 @@ router.post('/', authenticate, async (req, res) => {
             template,
         });
     } catch (err) {
-        console.error('Error creating template:', err);
+        console.error('Error creating template:', err.message);
         return res.status(500).json({ error: 'Failed to create template' });
     }
 });
+
 /**
  * PUT /api/templates/:id
  * - Auth required: only admin or owner
@@ -324,20 +356,12 @@ router.post('/', authenticate, async (req, res) => {
 router.put('/:id', authenticate, async (req, res) => {
     try {
         const { id } = req.params;
-        const { tags, ...updates } = req.body;
+        const { tags, ...updates } = req.body; // Extract tags from the request body
 
-        console.log('Updates:', updates); // Debug log
+        const template = await Template.findByPk(id, {
+            include: [Tag], // Include associated tags
+        });
 
-        const topicMapping = {
-            Education: 1,
-            Quiz: 2,
-            Other: 3,
-        };
-        if (updates.topic_id) {
-            updates.topic_id = topicMapping[updates.topic_id] || 3;
-        }
-
-        const template = await Template.findByPk(id, { include: [Tag] });
         if (!template) {
             return res.status(404).json({ error: 'Template not found' });
         }
@@ -345,17 +369,28 @@ router.put('/:id', authenticate, async (req, res) => {
             return res.status(403).json({ error: 'Unauthorized to update' });
         }
 
+        // Update template fields
         await template.update(updates);
 
-        // Update tags
+        // Update tags if provided
         if (tags && Array.isArray(tags)) {
+            // Find or create tags
             const tagInstances = await Promise.all(
-                tags.map((tagName) => Tag.findOrCreate({ where: { name: tagName } }))
+                tags.map(async (tagName) => {
+                    const [tag] = await Tag.findOrCreate({ where: { name: tagName } });
+                    return tag;
+                })
             );
-            await template.setTags(tagInstances.map(([tag]) => tag));
+
+            // Set tags for the template
+            await template.setTags(tagInstances);
         }
 
-        const updatedTemplate = await Template.findByPk(id, { include: [Tag] });
+        // Fetch the updated template with tags
+        const updatedTemplate = await Template.findByPk(id, {
+            include: [Tag],
+        });
+
         return res.json({ message: 'Template updated successfully', template: updatedTemplate });
     } catch (err) {
         console.error('Error updating template:', err);
