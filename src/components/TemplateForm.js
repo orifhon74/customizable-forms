@@ -24,6 +24,7 @@ function TemplateForm() {
     const navigate = useNavigate();
     const queryParams = new URLSearchParams(location.search);
 
+    // Determine if we're editing or creating
     const isEditMode = queryParams.get('edit') === 'true';
     const templateId = queryParams.get('templateId');
 
@@ -37,9 +38,10 @@ function TemplateForm() {
     const [topic, setTopic] = useState('Other');
     const [imageUrl, setImageUrl] = useState('');
 
-    // We store questions in arrays, which we'll send as arrays to the backend:
+    // We store questions in arrays. We’ll send them as arrays to the backend.
     const [stringQuestions, setStringQuestions] = useState(['', '', '', '']);
     const [multilineQuestions, setMultilineQuestions] = useState(['', '', '', '']);
+    // NOTE: Changed type for these "integer" questions so users can type text for the question
     const [intQuestions, setIntQuestions] = useState(['', '', '', '']);
     const [checkboxQuestions, setCheckboxQuestions] = useState(['', '', '', '']);
 
@@ -150,7 +152,7 @@ function TemplateForm() {
     };
 
     // -----------------------------
-    // Handle form submission
+    // Handle form submission (create or update)
     // -----------------------------
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -174,7 +176,7 @@ function TemplateForm() {
             title,
             description,
             access_type: accessType,
-            topic_id: topic,
+            topic_id: topic, // e.g. "Other"
             image_url: imageUrl,
             tags,
             stringQuestions,
@@ -196,12 +198,12 @@ function TemplateForm() {
             if (!resp.ok) {
                 const msg = await resp.json();
                 throw new Error(
-                    msg.error ||
-                    `Failed to ${isEditMode ? 'update' : 'create'} template`
+                    msg.error || `Failed to ${isEditMode ? 'update' : 'create'} template`
                 );
             }
 
             setSuccess(`Template ${isEditMode ? 'updated' : 'created'} successfully!`);
+            // Go back to the list of templates, or wherever you want
             navigate('/templates');
         } catch (err) {
             setError(err.message);
@@ -376,13 +378,13 @@ function TemplateForm() {
 
                             <hr />
 
-                            {/* Integer Questions */}
-                            <h3>Integer Questions</h3>
+                            {/* Integer Questions (now type="text") */}
+                            <h3>Integer Questions (Text for question prompt)</h3>
                             {intQuestions.map((val, i) => (
                                 <Form.Group className="mb-3" key={`int-${i}`}>
                                     <Form.Label>Integer Question {i + 1}</Form.Label>
                                     <Form.Control
-                                        type="number"
+                                        type="text"
                                         placeholder={`Integer Question ${i + 1}`}
                                         value={val}
                                         onChange={(e) =>
@@ -415,6 +417,7 @@ function TemplateForm() {
                             ))}
 
                             <hr />
+
                             <Button variant="success" type="submit">
                                 {isEditMode ? 'Save Changes' : 'Create Template'}
                             </Button>
