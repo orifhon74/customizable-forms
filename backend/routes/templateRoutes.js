@@ -1,446 +1,407 @@
-// routes/templateRoutes.js
-const express = require('express');
-const router = express.Router();
-const { Op, fn, col, literal } = require('sequelize');
+// src/components/TemplateForm.js
 
-const authenticate = require('../middleware/authenticate');
-const sequelize = require('../db');
-const { Template, Form, TemplateTag, Tag, Comment, Like } = require('../models');
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { storage } from '../firebase'; // Firebase storage instance
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-router.get('/search', async (req, res) => {
-    const { query, tag } = req.query;
+// ----- NEW: React Bootstrap imports -----
+import 'bootstrap/dist/css/bootstrap.min.css';
+import {
+    Container,
+    Form,
+    Button,
+    Alert,
+    Row,
+    Col,
+    Badge,
+    InputGroup,
+} from 'react-bootstrap';
 
-    console.log('Query Params:', { query, tag });
+function TemplateForm() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const queryParams = new URLSearchParams(location.search);
 
-    try {
-        let whereClause = {};
-        let includeClause = [];
+    const isEditMode = queryParams.get('edit') === 'true';
+    const templateId = queryParams.get('templateId');
 
-        // Add query-based search for title/description
-        if (query) {
-            whereClause = {
-                [Op.or]: [
-                    { title: { [Op.like]: `%${query}%` } },
-                    { description: { [Op.like]: `%${query}%` } },
-                ],
+    const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
+    const [accessType, setAccessType] = useState('public');
+    // ----- NEW: Default topic changed to 'Other' -----
+    const [topic, setTopic] = useState('Other'); // "Education", "Quiz", "Other"
+    const [imageFile, setImageFile] = useState(null); // Image upload state
+    const [imageUrl, setImageUrl] = useState(''); // Firebase URL for uploaded image
+
+    const [stringQuestions, setStringQuestions] = useState(['', '', '', '']);
+    const [multilineQuestions, setMultilineQuestions] = useState(['', '', '', '']);
+    const [intQuestions, setIntQuestions] = useState(['', '', '', '']);
+    const [checkboxQuestions, setCheckboxQuestions] = useState(['', '', '', '']);
+
+    const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
+    const [uploading, setUploading] = useState(false);
+
+    const [tags, setTags] = useState([]); // Store tags as an array of strings
+    const [tagInput, setTagInput] = useState(''); // Temporary input for the tag field
+
+    // -------------------------------------------------
+    // Tag handlers
+    // -------------------------------------------------
+    const handleAddTag = () => {
+        if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+            setTags((prev) => [...prev, tagInput.trim()]);
+            setTagInput('');
+        }
+    };
+
+    const handleRemoveTag = (tagToRemove) => {
+        setTags((prev) => prev.filter((tag) => tag !== tagToRemove));
+    };
+
+    // -------------------------------------------------
+    // Fetch existing template if editing
+    // -------------------------------------------------
+    useEffect(() => {
+        if (isEditMode && templateId) {
+            const fetchTemplate = async () => {
+                const token = localStorage.getItem('token');
+                try {
+                    const resp = await fetch(`http://localhost:5001/api/templates/${templateId}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (!resp.ok) throw new Error('Failed to fetch template for editing');
+                    const data = await resp.json();
+
+                    setTitle(data.title || '');
+                    setDescription(data.description || '');
+                    setAccessType(data.access_type || 'public');
+                    setTopic(data.topic_id || 'Other'); // If no topic, fallback to "Other"
+                    setImageUrl(data.image_url || '');
+                    setTags(data.tags || []);
+
+                    setStringQuestions([
+                        data.custom_string1_question || '',
+                        data.custom_string2_question || '',
+                        data.custom_string3_question || '',
+                        data.custom_string4_question || '',
+                    ]);
+                    setMultilineQuestions([
+                        data.custom_multiline1_question || '',
+                        data.custom_multiline2_question || '',
+                        data.custom_multiline3_question || '',
+                        data.custom_multiline4_question || '',
+                    ]);
+                    setIntQuestions([
+                        data.custom_int1_question || '',
+                        data.custom_int2_question || '',
+                        data.custom_int3_question || '',
+                        data.custom_int4_question || '',
+                    ]);
+                    setCheckboxQuestions([
+                        data.custom_checkbox1_question || '',
+                        data.custom_checkbox2_question || '',
+                        data.custom_checkbox3_question || '',
+                        data.custom_checkbox4_question || '',
+                    ]);
+                } catch (err) {
+                    setError(err.message);
+                }
             };
+            fetchTemplate();
+        }
+    }, [isEditMode, templateId]);
+
+    // -------------------------------------------------
+    // Handle form submission for create/update
+    // -------------------------------------------------
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError(null);
+        setSuccess(null);
+
+        const token = localStorage.getItem('token');
+        if (!token) {
+            setError('You must be logged in to create or edit a template');
+            return;
         }
 
-        // Add tag-based search
-        if (tag) {
-            includeClause.push({
-                model: Tag,
-                where: { id: tag }, // Search for templates with the given tag ID
-                through: { attributes: [] }, // Exclude join table attributes
-            });
-        }
+        const url = isEditMode
+            ? `http://localhost:5001/api/templates/${templateId}`
+            : 'http://localhost:5001/api/templates';
+        const method = isEditMode ? 'PUT' : 'POST';
 
-        // Fetch templates based on query and tag
-        const templates = await Template.findAll({
-            where: whereClause,
-            include: includeClause,
-        });
-
-        console.log('Templates Fetched:', templates);
-        res.json(templates);
-    } catch (err) {
-        console.error('Error searching templates:', err.message);
-        res.status(500).json({ error: 'Failed to search templates' });
-    }
-});
-
-/**
- * GET /api/templates/latest
- * - No auth required, fetches the latest templates
- */
-router.get('/latest', async (req, res) => {
-    try {
-        const templates = await Template.findAll({
-            where: { access_type: 'public' },
-            order: [['createdAt', 'DESC']], // Order by creation date
-            limit: 6, // Limit the number of results
-            subQuery: false,
-            include: [
-                {
-                    model: Like,
-                    attributes: [], // No need to include individual likes
-                },
-                {
-                    model: Tag,
-                    attributes: ['id', 'name'],
-                    through: { attributes: [] },
-                },
-            ],
-            attributes: [
-                'id',
-                'title',
-                'description',
-                'image_url',
-                'user_id',
-                [
-                    sequelize.fn('COUNT', sequelize.col('Likes.id')),
-                    'likeCount', // Aggregate likes for each template
-                ],
-            ],
-            group: ['Template.id', 'Tags.id'], // Group by template ID and tag ID
-        });
-
-        res.json(templates);
-    } catch (err) {
-        console.error('Error fetching public templates:', err.message);
-        res.status(500).json({ error: 'Failed to fetch public templates' });
-    }
-});
-
-/**
- * GET /api/templates/top - Fetch top 5 most popular public templates
- */
-router.get('/top', async (req, res) => {
-    try {
-        const templates = await Template.findAll({
-            where: { access_type: 'public' },
-            include: [
-                {
-                    model: Form,
-                    attributes: [], // Exclude raw Form data
-                },
-                {
-                    model: Like,
-                    attributes: [], // Exclude raw Like data
-                },
-            ],
-            attributes: [
-                'id',
-                'title',
-                'description',
-                'image_url',
-                'user_id',
-                [sequelize.fn('COUNT', sequelize.col('Forms.id')), 'forms_count'], // Count forms
-                [sequelize.fn('COUNT', sequelize.col('Likes.id')), 'likeCount'], // Count likes
-            ],
-            group: ['Template.id'], // Group by template ID
-            order: [[sequelize.literal('forms_count'), 'DESC']], // Order by forms count
-            limit: 5, // Limit the number of results
-            subQuery: false,
-        });
-
-        res.json(templates);
-    } catch (err) {
-        console.error('Error fetching top templates:', err.message);
-        res.status(500).json({ error: 'Failed to fetch top templates' });
-    }
-});
-
-/**
- * GET /api/templates/public
- * - No auth required, returns only access_type = 'public'
- */
-router.get('/public', async (req, res) => {
-    try {
-        const templates = await Template.findAll({
-            where: { access_type: 'public' },
-            include: [
-                {
-                    model: Like,
-                    attributes: [], // No need to include individual likes
-                },
-                {
-                    model: Tag,
-                    attributes: ['id', 'name'],
-                    through: { attributes: [] },
-                },
-            ],
-            attributes: [
-                'id',
-                'title',
-                'description',
-                'image_url',
-                'user_id',
-                [
-                    sequelize.fn('COUNT', sequelize.col('Likes.id')),
-                    'likeCount', // Aggregate likes for each template
-                ],
-            ],
-            group: ['Template.id', 'Tags.id'], // Group by template ID and tag ID
-        });
-
-        res.json(templates);
-    } catch (err) {
-        console.error('Error fetching public templates:', err.message);
-        res.status(500).json({ error: 'Failed to fetch public templates' });
-    }
-});
-
-/**
- * GET /api/templates/:id
- * Fetch template by ID including tags, comments, and likes
- */
-router.get('/:id', async (req, res) => {
-    try {
-        const template = await Template.findByPk(req.params.id, {
-            include: [
-                {
-                    model: Tag,
-                    through: { attributes: [] },
-                    attributes: ['id', 'name'],
-                },
-                {
-                    model: Comment,
-                    attributes: ['id', 'user_id', 'content', 'createdAt'],
-                },
-                {
-                    model: Like,
-                    attributes: ['id', 'user_id'],
-                },
-            ],
-        });
-
-        if (!template) {
-            return res.status(404).json({ error: 'Template not found' });
-        }
-
-        // Check if the template is public, owned by the user, or user is admin
-        if (
-            template.access_type !== 'public' &&
-            req.user?.id !== template.user_id &&
-            req.user?.role !== 'admin'
-        ) {
-            return res.status(403).json({ error: 'Access denied' });
-        }
-
-        // Count likes
-        const likeCount = template.Likes?.length || 0;
-
-        res.json({
-            ...template.toJSON(),
-            likeCount,
-        });
-    } catch (err) {
-        console.error('Error fetching template:', err.message);
-        res.status(500).json({ error: 'Failed to fetch template' });
-    }
-});
-
-/**
- * GET /api/templates
- * - Auth required: if admin => all templates, else => user-owned + public
- */
-router.get('/', authenticate, async (req, res) => {
-    try {
-        let templates;
-        if (req.user.role === 'admin') {
-            templates = await Template.findAll();
-        } else {
-            templates = await Template.findAll({
-                where: {
-                    [Op.or]: [
-                        { access_type: 'public' },
-                        { user_id: req.user.id },
-                    ],
-                },
-            });
-        }
-        return res.json(templates);
-    } catch (err) {
-        console.error('Error fetching templates:', err);
-        return res.status(500).json({ error: 'Failed to fetch templates' });
-    }
-});
-
-/**
- * POST /api/templates
- * - Auth required: create a new template
- */
-router.post('/', authenticate, async (req, res) => {
-    try {
-        const {
+        const requestBody = {
             title,
             description,
-            access_type,
-            topic_id,
-            stringQuestions = [],
-            multilineQuestions = [],
-            intQuestions = [],
-            checkboxQuestions = [],
-            tags = [],
-            image_url,
-        } = req.body;
-
-        if (!title || !topic_id) {
-            return res.status(400).json({ error: 'Title and topic are required' });
-        }
-
-        // Map topic_id from string to integer
-        const topicMapping = {
-            Education: 1,
-            Quiz: 2,
-            Other: 3,
+            access_type: accessType,
+            topic_id: topic, // Directly use topic name, assuming backend supports it
+            image_url: imageUrl, // Firebase URL
+            stringQuestions,
+            multilineQuestions,
+            intQuestions,
+            checkboxQuestions,
+            tags,
         };
 
-        const mappedTopicId = topicMapping[topic_id] || 3;
-
-        const template = await Template.create({
-            title,
-            description: description || null,
-            user_id: req.user.id,
-            access_type: access_type || 'public',
-            topic_id: mappedTopicId,
-            image_url: image_url || null,
-
-            // Single-line
-            custom_string1_state: !!stringQuestions[0],
-            custom_string1_question: stringQuestions[0] || null,
-            custom_string2_state: !!stringQuestions[1],
-            custom_string2_question: stringQuestions[1] || null,
-            custom_string3_state: !!stringQuestions[2],
-            custom_string3_question: stringQuestions[2] || null,
-            custom_string4_state: !!stringQuestions[3],
-            custom_string4_question: stringQuestions[3] || null,
-
-            // Multi-line
-            custom_multiline1_state: !!multilineQuestions[0],
-            custom_multiline1_question: multilineQuestions[0] || null,
-            custom_multiline2_state: !!multilineQuestions[1],
-            custom_multiline2_question: multilineQuestions[1] || null,
-            custom_multiline3_state: !!multilineQuestions[2],
-            custom_multiline3_question: multilineQuestions[2] || null,
-            custom_multiline4_state: !!multilineQuestions[3],
-            custom_multiline4_question: multilineQuestions[3] || null,
-
-            // Integer
-            custom_int1_state: !!intQuestions[0],
-            custom_int1_question: intQuestions[0] || null,
-            custom_int2_state: !!intQuestions[1],
-            custom_int2_question: intQuestions[1] || null,
-            custom_int3_state: !!intQuestions[2],
-            custom_int3_question: intQuestions[2] || null,
-            custom_int4_state: !!intQuestions[3],
-            custom_int4_question: intQuestions[3] || null,
-
-            // Checkboxes
-            custom_checkbox1_state: !!checkboxQuestions[0],
-            custom_checkbox1_question: checkboxQuestions[0] || null,
-            custom_checkbox2_state: !!checkboxQuestions[1],
-            custom_checkbox2_question: checkboxQuestions[1] || null,
-            custom_checkbox3_state: !!checkboxQuestions[2],
-            custom_checkbox3_question: checkboxQuestions[2] || null,
-            custom_checkbox4_state: !!checkboxQuestions[3],
-            custom_checkbox4_question: checkboxQuestions[3] || null,
-        });
-
-        // Inside your POST /api/templates route
-        if (tags && Array.isArray(tags)) {
-            for (const tagName of tags) {
-                // console.log(Processing tag: ${tagName}); // Debug log
-                const [tag, created] = await Tag.findOrCreate({ where: { name: tagName } });
-                // console.log(Tag created/found: ${tagName}, ID: ${tag.id}); // Debug log
-
-                await TemplateTag.create({ template_id: template.id, tag_id: tag.id });
+        try {
+            const resp = await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(requestBody),
+            });
+            if (!resp.ok) {
+                throw new Error(`Failed to ${isEditMode ? 'update' : 'create'} template`);
             }
+
+            setSuccess(`Template ${isEditMode ? 'updated' : 'created'} successfully!`);
+            navigate('/templates');
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
+    // -------------------------------------------------
+    // Handle image file selection/upload
+    // -------------------------------------------------
+    const handleImageUpload = async (e) => {
+        const file = e.target?.files?.[0]; // Safely access the file
+        if (!file) {
+            setError('No file selected');
+            return;
         }
 
-        return res.status(201).json({
-            message: 'Template created successfully',
-            template,
-        });
-    } catch (err) {
-        console.error('Error creating template:', err.message);
-        return res.status(500).json({ error: 'Failed to create template' });
-    }
-});
+        setImageFile(file);
 
-/**
- * PUT /api/templates/:id
- * - Auth required: only admin or owner
- */
-router.put('/:id', authenticate, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { tags, ...updates } = req.body; // Extract tags from the request body
-
-        const template = await Template.findByPk(id, {
-            include: [Tag], // Include associated tags
-        });
-
-        if (!template) {
-            return res.status(404).json({ error: 'Template not found' });
+        const storageRef = ref(storage, `template-images/${Date.now()}-${file.name}`);
+        try {
+            setUploading(true);
+            const snapshot = await uploadBytes(storageRef, file);
+            const url = await getDownloadURL(snapshot.ref);
+            setImageUrl(url); // Set the Firebase URL
+            setUploading(false);
+        } catch (err) {
+            setError('Failed to upload image');
+            setUploading(false);
         }
-        if (template.user_id !== req.user.id && req.user.role !== 'admin') {
-            return res.status(403).json({ error: 'Unauthorized to update' });
-        }
+    };
 
-        // Update template fields
-        await template.update(updates);
+    // -------------------------------------------------
+    // Render
+    // -------------------------------------------------
+    return (
+        // Dark mode background and text
+        <div className="bg-dark text-light min-vh-100 py-4">
+            <Container>
+                <h1 className="mb-4">
+                    {isEditMode ? 'Edit Template' : 'Create Template'}
+                </h1>
 
-        // Update tags if provided
-        if (tags && Array.isArray(tags)) {
-            // Find or create tags
-            const tagInstances = await Promise.all(
-                tags.map(async (tagName) => {
-                    const [tag] = await Tag.findOrCreate({ where: { name: tagName } });
-                    return tag;
-                })
-            );
+                {/* Error / Success Messages */}
+                {error && <Alert variant="danger">{error}</Alert>}
+                {success && <Alert variant="success">{success}</Alert>}
 
-            // Set tags for the template
-            await template.setTags(tagInstances);
-        }
+                <Form onSubmit={handleSubmit}>
+                    {/* Title */}
+                    <Form.Group className="mb-3" controlId="formTitle">
+                        <Form.Label>Title:</Form.Label>
+                        <Form.Control
+                            type="text"
+                            placeholder="Enter a title"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            required
+                        />
+                    </Form.Group>
 
-        // Fetch the updated template with tags
-        const updatedTemplate = await Template.findByPk(id, {
-            include: [Tag],
-        });
+                    {/* Description */}
+                    <Form.Group className="mb-3" controlId="formDescription">
+                        <Form.Label>Description:</Form.Label>
+                        <Form.Control
+                            as="textarea"
+                            rows={3}
+                            placeholder="Enter a description"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                        />
+                    </Form.Group>
 
-        return res.json({ message: 'Template updated successfully', template: updatedTemplate });
-    } catch (err) {
-        console.error('Error updating template:', err);
-        return res.status(500).json({ error: 'Failed to update template' });
-    }
-});
+                    {/* Access Type */}
+                    <Form.Group className="mb-3" controlId="formAccessType">
+                        <Form.Label>Access Type:</Form.Label>
+                        <Form.Select
+                            value={accessType}
+                            onChange={(e) => setAccessType(e.target.value)}
+                        >
+                            <option value="public">Public</option>
+                            <option value="private">Private</option>
+                        </Form.Select>
+                    </Form.Group>
 
-/**
- * DELETE /api/templates/:id
- * - Auth required: only admin or owner
- */
-router.delete('/:id', authenticate, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const template = await Template.findByPk(id);
-        if (!template) {
-            return res.status(404).json({ error: 'Template not found' });
-        }
-        if (template.user_id !== req.user.id && req.user.role !== 'admin') {
-            return res.status(403).json({ error: 'Unauthorized to delete' });
-        }
+                    {/* Topic */}
+                    <Form.Group className="mb-3" controlId="formTopic">
+                        <Form.Label>Topic:</Form.Label>
+                        <Form.Select
+                            value={topic}
+                            onChange={(e) => setTopic(e.target.value)}
+                        >
+                            <option value="Education">Education</option>
+                            <option value="Quiz">Quiz</option>
+                            <option value="Other">Other</option>
+                        </Form.Select>
+                    </Form.Group>
 
-        await template.destroy();
-        return res.json({ message: 'Template deleted successfully' });
-    } catch (err) {
-        console.error('Error deleting template:', err);
-        return res.status(500).json({ error: 'Failed to delete template' });
-    }
-});
+                    {/* Image Upload */}
+                    <Form.Group className="mb-3" controlId="formImageUpload">
+                        <Form.Label>Image (Upload to Firebase):</Form.Label>
+                        <Form.Control
+                            type="file"
+                            onChange={handleImageUpload}
+                            disabled={uploading}
+                        />
+                        {uploading && (
+                            <Form.Text className="text-muted">Uploading...</Form.Text>
+                        )}
+                        {imageUrl && (
+                            <div className="mt-2">
+                                <img
+                                    src={imageUrl}
+                                    alt="Uploaded"
+                                    style={{ width: '150px', border: '1px solid #999' }}
+                                />
+                            </div>
+                        )}
+                    </Form.Group>
 
-/**
- * GET /api/templates/:id/forms
- * - Auth required: only admin or owner
- */
-router.get('/:id/forms', authenticate, async (req, res) => {
-    try {
-        const template = await Template.findByPk(req.params.id);
-        if (!template) {
-            return res.status(404).json({ error: 'Template not found' });
-        }
-        if (template.user_id !== req.user.id && req.user.role !== 'admin') {
-            return res.status(403).json({ error: 'Unauthorized' });
-        }
+                    {/* Tags */}
+                    <Form.Group className="mb-3" controlId="formTags">
+                        <Form.Label>Tags:</Form.Label>
+                        <InputGroup className="mb-2">
+                            <Form.Control
+                                type="text"
+                                placeholder="Enter a tag"
+                                value={tagInput}
+                                onChange={(e) => setTagInput(e.target.value)}
+                            />
+                            <Button variant="primary" onClick={handleAddTag}>
+                                Add Tag
+                            </Button>
+                        </InputGroup>
+                        <div>
+                            {tags.map((tag, index) => (
+                                <Badge
+                                    bg="secondary"
+                                    className="me-2"
+                                    key={index}
+                                >
+                                    {tag}{' '}
+                                    <Button
+                                        variant="outline-light"
+                                        size="sm"
+                                        onClick={() => handleRemoveTag(tag)}
+                                        style={{ border: 'none' }}
+                                    >
+                                        ×
+                                    </Button>
+                                </Badge>
+                            ))}
+                        </div>
+                    </Form.Group>
 
-        const forms = await Form.findAll({ where: { template_id: template.id } });
-        return res.json(forms);
-    } catch (err) {
-        console.error('Error fetching forms:', err);
-        return res.status(500).json({ error: 'Failed to fetch forms' });
-    }
-});
+                    <hr />
 
-module.exports = router;
+                    {/* String Questions */}
+                    <h3>String Questions</h3>
+                    {stringQuestions.map((val, i) => (
+                        <Form.Group className="mb-3" key={i}>
+                            <Form.Label>String Question {i + 1}</Form.Label>
+                            <Form.Control
+                                type="text"
+                                placeholder={`String Question ${i + 1}`}
+                                value={val}
+                                onChange={(e) =>
+                                    setStringQuestions((prev) =>
+                                        prev.map((q, idx) => (idx === i ? e.target.value : q))
+                                    )
+                                }
+                            />
+                        </Form.Group>
+                    ))}
+
+                    <hr />
+
+                    {/* Multiline Questions */}
+                    <h3>Multiline Questions</h3>
+                    {multilineQuestions.map((val, i) => (
+                        <Form.Group className="mb-3" key={i}>
+                            <Form.Label>Multiline Question {i + 1}</Form.Label>
+                            <Form.Control
+                                as="textarea"
+                                rows={3}
+                                placeholder={`Multiline Question ${i + 1}`}
+                                value={val}
+                                onChange={(e) =>
+                                    setMultilineQuestions((prev) =>
+                                        prev.map((q, idx) => (idx === i ? e.target.value : q))
+                                    )
+                                }
+                            />
+                        </Form.Group>
+                    ))}
+
+                    <hr />
+
+                    {/* Integer Questions */}
+                    <h3>Integer Questions</h3>
+                    {intQuestions.map((val, i) => (
+                        <Form.Group className="mb-3" key={i}>
+                            <Form.Label>Integer Question {i + 1}</Form.Label>
+                            <Form.Control
+                                type="text"
+                                placeholder={`Integer Question ${i + 1}`}
+                                value={val}
+                                onChange={(e) =>
+                                    setIntQuestions((prev) =>
+                                        prev.map((q, idx) => (idx === i ? e.target.value : q))
+                                    )
+                                }
+                            />
+                        </Form.Group>
+                    ))}
+
+                    <hr />
+
+                    {/* Checkbox Questions */}
+                    <h3>Checkbox Questions</h3>
+                    {checkboxQuestions.map((val, i) => (
+                        <Form.Group className="mb-3" key={i}>
+                            <Form.Label>Checkbox Question {i + 1}</Form.Label>
+                            <Form.Control
+                                type="text"
+                                placeholder={`Checkbox Question ${i + 1}`}
+                                value={val}
+                                onChange={(e) =>
+                                    setCheckboxQuestions((prev) =>
+                                        prev.map((q, idx) => (idx === i ? e.target.value : q))
+                                    )
+                                }
+                            />
+                        </Form.Group>
+                    ))}
+
+                    <hr />
+
+                    <Button variant="success" type="submit">
+                        {isEditMode ? 'Save Changes' : 'Create Template'}
+                    </Button>
+                </Form>
+            </Container>
+        </div>
+    );
+}
+
+export default TemplateForm;
