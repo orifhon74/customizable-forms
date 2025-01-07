@@ -143,12 +143,32 @@ function Home() {
                                         <Card.Text>
                                             <strong>Likes:</strong> {template.likeCount || 0}
                                         </Card.Text>
-                                        <div className="mt-auto d-flex justify-content-between">
+                                        <div className="mt-auto d-flex justify-content-between align-items-center">
+                                            {/*
+                                                Replaced the "Like" button with a thumbs-up in a blue bubble.
+                                                If you'd like a different shade or style, just tweak the styles below.
+                                            */}
                                             <Button
-                                                variant="primary"
                                                 onClick={() => handleLike(template.id, true)}
+                                                style={{
+                                                    backgroundColor: '#007bff',
+                                                    border: 'none',
+                                                    borderRadius: '50%',
+                                                    width: '40px',
+                                                    height: '40px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                }}
+                                                title="Like this template"
                                             >
-                                                Like
+                                                <span
+                                                    role="img"
+                                                    aria-label="thumbs up"
+                                                    style={{ fontSize: '1.2rem' }}
+                                                >
+                                                    👍
+                                                </span>
                                             </Button>
                                             <Button
                                                 variant="outline-secondary"
@@ -213,12 +233,31 @@ function Home() {
                                         <Card.Text>
                                             <strong>Likes:</strong> {template.likeCount || 0}
                                         </Card.Text>
-                                        <div className="mt-auto d-flex justify-content-between">
+                                        <div className="mt-auto d-flex justify-content-between align-items-center">
+                                            {/*
+                                                Same thumbs-up bubble for the "top templates" section
+                                            */}
                                             <Button
-                                                variant="primary"
                                                 onClick={() => handleLike(template.id, false)}
+                                                style={{
+                                                    backgroundColor: '#007bff',
+                                                    border: 'none',
+                                                    borderRadius: '50%',
+                                                    width: '40px',
+                                                    height: '40px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                }}
+                                                title="Like this template"
                                             >
-                                                Like
+                                                <span
+                                                    role="img"
+                                                    aria-label="thumbs up"
+                                                    style={{ fontSize: '1.2rem' }}
+                                                >
+                                                    👍
+                                                </span>
                                             </Button>
                                             <Link to={`/templates/${template.id}`}>
                                                 <Button variant="outline-secondary">View Details</Button>
