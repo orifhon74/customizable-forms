@@ -49,6 +49,8 @@ function TemplateForm() {
     const [success, setSuccess] = useState(null);
     const [uploading, setUploading] = useState(false);
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     const { t } = useContext(LanguageContext);
 
     // -----------------------------
@@ -75,7 +77,7 @@ function TemplateForm() {
                 if (!token) return;
 
                 try {
-                    const resp = await fetch(`http://localhost:5001/api/templates/${templateId}`, {
+                    const resp = await fetch(`${API_URL}/api/templates/${templateId}`, {
                         headers: { Authorization: `Bearer ${token}` },
                     });
                     if (!resp.ok) throw new Error('Failed to fetch template for editing');
