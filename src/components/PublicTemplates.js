@@ -112,6 +112,9 @@ function PublicTemplates() {
                                         {template.description}
                                     </Card.Text>
                                     <Card.Text>
+                                        <strong>Author:</strong> {template.User?.username ?? 'Unknown'}
+                                    </Card.Text>
+                                    <Card.Text>
                                         <strong>Likes:</strong> {template.likeCount || 0}
                                     </Card.Text>
                                     <div className="d-flex justify-content-between mb-3">

@@ -87,7 +87,7 @@ router.get('/latest', async (req, res) => {
                     'likeCount', // Aggregate likes for each template
                 ],
             ],
-            group: ['Template.id', 'Tags.id'], // Group by template ID and tag ID
+            group: ['Template.id', 'Tags.id', 'User.id'],
         });
 
         res.json(templates);
@@ -112,11 +112,6 @@ router.get('/top', async (req, res) => {
                 {
                     model: Like,
                     attributes: [], // Exclude raw Like data
-                },
-                {
-                    // Include the User model so we get username
-                    model: User,
-                    attributes: ['id', 'username'],
                 },
             ],
             attributes: [
@@ -176,7 +171,7 @@ router.get('/public', async (req, res) => {
                     'likeCount', // Aggregate likes for each template
                 ],
             ],
-            group: ['Template.id', 'Tags.id'], // Group by template ID and tag ID
+            group: ['Template.id', 'Tags.id', 'User.id'],
         });
 
         res.json(templates);
