@@ -5,7 +5,7 @@ const { Op, fn, col, literal } = require('sequelize');
 
 const authenticate = require('../middleware/authenticate');
 const sequelize = require('../db');
-const { Template, Form, TemplateTag, Tag, Comment, Like } = require('../models');
+const { Template, Form, TemplateTag, Tag, Comment, Like, User } = require('../models');
 
 router.get('/search', async (req, res) => {
     const { query, tag } = req.query;
@@ -70,6 +70,11 @@ router.get('/latest', async (req, res) => {
                     attributes: ['id', 'name'],
                     through: { attributes: [] },
                 },
+                {
+                    // Include the User model so we get username
+                    model: User,
+                    attributes: ['id', 'username'],
+                },
             ],
             attributes: [
                 'id',
@@ -107,6 +112,11 @@ router.get('/top', async (req, res) => {
                 {
                     model: Like,
                     attributes: [], // Exclude raw Like data
+                },
+                {
+                    // Include the User model so we get username
+                    model: User,
+                    attributes: ['id', 'username'],
                 },
             ],
             attributes: [
@@ -148,6 +158,11 @@ router.get('/public', async (req, res) => {
                     model: Tag,
                     attributes: ['id', 'name'],
                     through: { attributes: [] },
+                },
+                {
+                    // Include the User model so we get username
+                    model: User,
+                    attributes: ['id', 'username'],
                 },
             ],
             attributes: [

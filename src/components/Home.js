@@ -140,7 +140,7 @@ function Home() {
                                             {template.description}
                                         </Card.Text>
                                         <Card.Text>
-                                            <strong>Author:</strong> {template.user_id}
+                                            <strong>Author:</strong> {template.User?.username ?? 'Unknown'}
                                         </Card.Text>
                                         <Card.Text>
                                             <strong>Likes:</strong> {template.likeCount || 0}
