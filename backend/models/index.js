@@ -15,6 +15,10 @@ Form.belongsTo(User, { foreignKey: 'user_id' });
 Template.hasMany(Form, { foreignKey: 'template_id', onDelete: 'CASCADE' });
 Form.belongsTo(Template, { foreignKey: 'template_id' });
 
+Template.belongsTo(User, { foreignKey: 'user_id', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+
+User.hasMany(Template, { foreignKey: 'user_id' });
+
 // Comments association
 Template.hasMany(Comment, { foreignKey: 'template_id', onDelete: 'CASCADE' });
 Comment.belongsTo(Template, { foreignKey: 'template_id' });
