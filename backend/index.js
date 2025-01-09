@@ -67,7 +67,7 @@ app.use('/api/user-search', userSearchRoutes); // /api/user-search/search?query=
 const PORT = process.env.PORT || 5001;
 
 sequelize
-    .sync({ alter: true })  // set alter: true for safe schema updates, force: true for dev
+    .sync()
     .then(() => {
         console.log('Database synced successfully');
         app.listen(PORT, () => {
