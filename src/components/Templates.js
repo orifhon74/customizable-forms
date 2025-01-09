@@ -13,6 +13,7 @@ import {
     Alert,
 } from 'react-bootstrap';
 import { ThemeContext } from '../context/ThemeContext';
+import {LanguageContext} from "../context/LanguageContext";
 
 function Templates() {
     const [templates, setTemplates] = useState([]);
@@ -30,6 +31,7 @@ function Templates() {
 
     const API_URL = process.env.REACT_APP_API_URL;
     const { theme } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
 
     useEffect(() => {
         const fetchTemplatesAndForms = async () => {
@@ -152,13 +154,13 @@ function Templates() {
         <Container className="my-4">
             {!id ? (
                 <>
-                    <h1 className="mb-4 text-center">Your Templates</h1>
+                    <h1 className="mb-4 text-center">{t('yourTemplates')}</h1>
                     {templates.length === 0 ? (
                         <Alert
                             variant={theme === 'dark' ? 'dark' : 'warning'}
                             className="text-center"
                         >
-                            No templates available. Create one to get started!
+                            {t('noTemplates')}
                         </Alert>
                     ) : (
                         <Row xs={1} md={2} lg={3} className="g-4">

@@ -2,6 +2,7 @@ import React, {useContext, useEffect, useState} from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Badge, Alert } from 'react-bootstrap';
 import { ThemeContext } from '../context/ThemeContext';
+import {LanguageContext} from "../context/LanguageContext";
 
 
 function Home() {
@@ -17,6 +18,7 @@ function Home() {
     const API_URL = process.env.REACT_APP_API_URL;
 
     const { theme } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
 
     useEffect(() => {
         const fetchHomeData = async () => {
@@ -92,12 +94,12 @@ function Home() {
 
     return (
         <Container className="my-4">
-            <h1 className="text-center mb-5">Welcome to Customizable Forms</h1>
+            <h1 className="text-center mb-5">{t('welcome')}</h1>
             {error && <Alert variant="danger">{error}</Alert>}
 
             {/* Latest Templates */}
             <section className="mb-5">
-                <h2 className="mb-4 text-center">Latest Templates</h2>
+                <h2 className="mb-4 text-center">{t('latestTemplates')}</h2>
                 {latestTemplates.length === 0 ? (
                     <p className="text-center">No latest templates available.</p>
                 ) : (
@@ -144,10 +146,6 @@ function Home() {
                                             <strong>Likes:</strong> {template.likeCount || 0}
                                         </Card.Text>
                                         <div className="mt-auto d-flex justify-content-between align-items-center">
-                                            {/*
-                                                Replaced the "Like" button with a thumbs-up in a blue bubble.
-                                                If you'd like a different shade or style, just tweak the styles below.
-                                            */}
                                             <Button
                                                 onClick={() => handleLike(template.id, true)}
                                                 style={{
@@ -174,7 +172,7 @@ function Home() {
                                                 variant="outline-secondary"
                                                 onClick={() => navigate(`/templates/${template.id}`)}
                                             >
-                                                View Details
+                                                {t('viewDetails')}
                                             </Button>
                                         </div>
                                     </Card.Body>
@@ -187,7 +185,7 @@ function Home() {
 
             {/* Top Templates */}
             <section className="mb-5">
-                <h2 className="mb-4 text-center">Top 5 Most Popular Templates</h2>
+                <h2 className="mb-4 text-center">{t('top5Templates')}</h2>
                 {topTemplates.length === 0 ? (
                     <p className="text-center">No top templates available.</p>
                 ) : (
@@ -260,7 +258,7 @@ function Home() {
                                                 </span>
                                             </Button>
                                             <Link to={`/templates/${template.id}`}>
-                                                <Button variant="outline-secondary">View Details</Button>
+                                                <Button variant="outline-secondary">{t('viewDetails')}</Button>
                                             </Link>
                                         </div>
                                     </Card.Body>
@@ -273,7 +271,7 @@ function Home() {
 
             {/* Tag Cloud */}
             <section className="mb-5">
-                <h2 className="mb-4 text-center">Explore Tags</h2>
+                <h2 className="mb-4 text-center">{t('tags')}</h2>
                 <div className="d-flex flex-wrap justify-content-center">
                     {tags.map((tag) => (
                         <Badge

@@ -1,6 +1,6 @@
 // src/components/TemplateForm.js
 
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect, useContext} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { storage } from '../firebase'; // Firebase storage
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -17,6 +17,7 @@ import {
     InputGroup,
     Card,
 } from 'react-bootstrap';
+import {LanguageContext} from "../context/LanguageContext";
 
 function TemplateForm() {
     const location = useLocation();
@@ -47,6 +48,8 @@ function TemplateForm() {
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
     const [uploading, setUploading] = useState(false);
+
+    const { t } = useContext(LanguageContext);
 
     // -----------------------------
     // Tag handlers
@@ -209,7 +212,7 @@ function TemplateForm() {
                 <Card className="bg-secondary text-light mb-4">
                     <Card.Body>
                         <h1 className="mb-4">
-                            {isEditMode ? 'Edit Template' : 'Create Template'}
+                            {isEditMode ? t('editTemplate') : t('createTemplate')}
                         </h1>
 
                         {error && <Alert variant="danger">{error}</Alert>}
@@ -218,7 +221,7 @@ function TemplateForm() {
                         <Form onSubmit={handleSubmit}>
                             {/* Title */}
                             <Form.Group className="mb-3" controlId="formTitle">
-                                <Form.Label>Title</Form.Label>
+                                <Form.Label>{t('title')}</Form.Label>
                                 <Form.Control
                                     type="text"
                                     placeholder="Enter a title"
@@ -230,7 +233,7 @@ function TemplateForm() {
 
                             {/* Description */}
                             <Form.Group className="mb-3" controlId="formDescription">
-                                <Form.Label>Description</Form.Label>
+                                <Form.Label>{t('description')}</Form.Label>
                                 <Form.Control
                                     as="textarea"
                                     rows={3}
@@ -243,7 +246,7 @@ function TemplateForm() {
                             {/* Access & Topic */}
                             <Row className="mb-3">
                                 <Form.Group as={Col} controlId="formAccessType">
-                                    <Form.Label>Access Type</Form.Label>
+                                    <Form.Label>{t('accessType')}</Form.Label>
                                     <Form.Select
                                         value={accessType}
                                         onChange={(e) => setAccessType(e.target.value)}
@@ -254,7 +257,7 @@ function TemplateForm() {
                                 </Form.Group>
 
                                 <Form.Group as={Col} controlId="formTopic">
-                                    <Form.Label>Topic</Form.Label>
+                                    <Form.Label>{t('topic')}</Form.Label>
                                     <Form.Select
                                         value={topic}
                                         onChange={(e) => setTopic(e.target.value)}
@@ -268,7 +271,7 @@ function TemplateForm() {
 
                             {/* Image Upload */}
                             <Form.Group className="mb-3" controlId="formImageUpload">
-                                <Form.Label>Image (Upload to Firebase)</Form.Label>
+                                <Form.Label>{t('image')} (Upload to Firebase)</Form.Label>
                                 <Form.Control
                                     type="file"
                                     onChange={handleImageUpload}
@@ -290,7 +293,7 @@ function TemplateForm() {
 
                             {/* Tags */}
                             <Form.Group className="mb-3" controlId="formTags">
-                                <Form.Label>Tags</Form.Label>
+                                <Form.Label>{t('tags')}</Form.Label>
                                 <InputGroup>
                                     <Form.Control
                                         type="text"

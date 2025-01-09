@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+// src/components/Register.js
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Form, Button, Alert, Card } from 'react-bootstrap';
+import { ThemeContext } from '../context/ThemeContext';
+import {LanguageContext} from "../context/LanguageContext";
 
 function Register() {
     const [username, setUsername] = useState('');
@@ -8,8 +11,10 @@ function Register() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
     const navigate = useNavigate();
-
     const API_URL = process.env.REACT_APP_API_URL;
+
+    const { theme } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -46,7 +51,7 @@ function Register() {
                 }}
             >
                 <Card.Body>
-                    <h1 className="text-center mb-4">Register</h1>
+                    <h1 className="text-center mb-4">{t('register')}</h1>
                     {error && <Alert variant="danger">{error}</Alert>}
                     <Form onSubmit={handleSubmit}>
                         <Form.Group className="mb-3" controlId="formUsername">
@@ -80,11 +85,11 @@ function Register() {
                             />
                         </Form.Group>
                         <Button type="submit" className="w-100" variant="primary">
-                            Sign Up
+                            {t('register')}
                         </Button>
                         <div className="text-center mt-3">
                             <p>
-                                Already have an account?{' '}
+                                {t('yesAccount')}{' '}
                                 <Button
                                     variant="link"
                                     onClick={() => navigate('/login')}
@@ -94,7 +99,7 @@ function Register() {
                                         color: 'var(--bs-primary)',
                                     }}
                                 >
-                                    Log In
+                                    {t('login')}
                                 </Button>
                             </p>
                         </div>

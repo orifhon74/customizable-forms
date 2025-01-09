@@ -1,12 +1,27 @@
 /* index.css */
+/* LIGHT THEME */
 body.light {
-  background-color: #fff;
-  color: #000;
+  --bs-body-bg: #ffffff;        /* Page background for light mode */
+  --bs-body-color: #212529;     /* Main text color for light mode */
+  --bs-card-bg: #f0f0f0;        /* Lighter gray for the card */
+  --bs-primary: #0d6efd;        /* Default Bootstrap primary */
+  --bs-placeholder-color: #6c757d; /* Placeholder text color in light mode */
 }
 
+/* DARK THEME */
 body.dark {
-  background-color: #121212;
-  color: #fff;
+  /* A lighter dark gray (not pure black) */
+  --bs-body-bg: #1f1f1f;
+  --bs-body-color: #f0f0f0;     /* Off-white text for better contrast */
+  --bs-card-bg: #2c2c2c;        /* Medium gray for card background */
+  --bs-primary: #0d6efd;
+  --bs-placeholder-color: #bbbbbb; /* Lighter placeholder text color */
+}
+
+/* Make placeholders use our custom color variables */
+.form-control::placeholder {
+  color: var(--bs-placeholder-color) !important;
+  opacity: 1; /* Override browser default placeholder opacity */
 }
 
 .navbar-dark .navbar-nav .nav-link {

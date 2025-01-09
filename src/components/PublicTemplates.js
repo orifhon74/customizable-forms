@@ -2,6 +2,7 @@ import React, {useState, useEffect, useContext} from 'react';
 import { Link } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Badge, Alert } from 'react-bootstrap';
 import { ThemeContext } from '../context/ThemeContext';
+import {LanguageContext} from "../context/LanguageContext";
 
 
 function PublicTemplates() {
@@ -12,6 +13,7 @@ function PublicTemplates() {
     const API_URL = process.env.REACT_APP_API_URL;
 
     const { theme } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
 
     useEffect(() => {
         const fetchTemplates = async () => {
@@ -62,7 +64,7 @@ function PublicTemplates() {
 
     return (
         <Container className="my-4">
-            <h1 className="text-center mb-4">Public Templates</h1>
+            <h1 className="text-center mb-4">{t('publicTemplates')}</h1>
             {error && <Alert variant="danger">{error}</Alert>}
             {templates.length === 0 ? (
                 <Alert variant="info" className="text-center">
@@ -114,14 +116,30 @@ function PublicTemplates() {
                                     </Card.Text>
                                     <div className="d-flex justify-content-between mb-3">
                                         <Button
-                                            variant={theme === 'dark' ? 'light' : 'primary'}
                                             onClick={() => handleLike(template.id)}
+                                            style={{
+                                                backgroundColor: '#007bff',
+                                                border: 'none',
+                                                borderRadius: '50%',
+                                                width: '40px',
+                                                height: '40px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                            }}
+                                            title="Like this template"
                                         >
-                                            Like
+                                                <span
+                                                    role="img"
+                                                    aria-label="thumbs up"
+                                                    style={{ fontSize: '1.2rem' }}
+                                                >
+                                                    👍
+                                                </span>
                                         </Button>
                                         <Link to={`/templates/${template.id}`}>
                                             <Button variant={theme === 'dark' ? 'outline-light' : 'outline-secondary'}>
-                                                View Details
+                                                {t('viewDetails')}
                                             </Button>
                                         </Link>
                                     </div>

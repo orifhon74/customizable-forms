@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect, useContext} from 'react';
 import { useParams } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Alert, Form, Spinner, Badge, ListGroup } from 'react-bootstrap';
+import {LanguageContext} from "../context/LanguageContext";
 
 
 function TemplateDetails() {
@@ -13,6 +14,8 @@ function TemplateDetails() {
     const [commentContent, setCommentContent] = useState(''); // Controlled input for comment
 
     const API_URL = process.env.REACT_APP_API_URL;
+
+    const { t } = useContext(LanguageContext);
 
     useEffect(() => {
         const fetchTemplateDetails = async () => {
@@ -141,7 +144,7 @@ function TemplateDetails() {
 
                     <Card className="shadow-sm">
                         <Card.Body>
-                            <Card.Title>Questions</Card.Title>
+                            <Card.Title>{t('questions')}</Card.Title>
                             <ListGroup variant="flush">
                                 <ListGroup.Item>
                                     <strong>String Questions</strong>
@@ -199,7 +202,7 @@ function TemplateDetails() {
                 <Col md={4}>
                     <Card className="shadow-sm mb-4">
                         <Card.Body>
-                            <Card.Title>Comments</Card.Title>
+                            <Card.Title>{t('comments')}</Card.Title>
                             <ListGroup variant="flush" className="mb-3">
                                 {comments.map((comment) => (
                                     <ListGroup.Item key={comment.id}>
