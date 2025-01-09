@@ -54,7 +54,7 @@ router.get('/:id', authenticate, async (req, res) => {
     try {
         const form = await Form.findByPk(req.params.id, {
             include: [
-                { model: Template },
+                { model: Template }, // We need Template to check the template's user_id
                 { model: User, attributes: ['username'] },
             ],
         });
@@ -63,13 +63,20 @@ router.get('/:id', authenticate, async (req, res) => {
             return res.status(404).json({ error: 'Form not found' });
         }
 
+        // Check ownership or admin
+        if (
+            req.user.role !== 'admin' &&
+            req.user.id !== form.Template.user_id
+        ) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+
         res.json(form);
     } catch (err) {
         console.error('Error fetching form details:', err);
         res.status(500).json({ error: 'Failed to fetch form details' });
     }
 });
-
 /**
  * POST /api/forms/:templateId/submit
  * - Auth required: submit a new form for a given template
