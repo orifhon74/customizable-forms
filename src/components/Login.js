@@ -23,9 +23,13 @@ function Login({ setIsAuthenticated, setUserRole }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
             });
+
+            // invalid credentials or user is blocked
             if (!response.ok) {
-                throw new Error('Invalid credentials. Please try again.');
+                const data = await response.json();
+                throw new Error(data.error);
             }
+
             const data = await response.json();
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
