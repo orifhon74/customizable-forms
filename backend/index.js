@@ -1,5 +1,17 @@
 // index.js
-require('dotenv').config();
+// require('dotenv').config();
+
+if (process.env.NODE_ENV === 'development') {
+    // Load from .env.local if it exists
+    require('dotenv').config({ path: '.env.local' });
+    console.log(process.env.DB_PASSWORD);
+    console.log('Running in DEVELOPMENT mode - using .env.local');
+} else {
+    // Fallback to .env for production or other
+    require('dotenv').config();
+    console.log('Running in PRODUCTION mode - using .env');
+}
+
 const express = require('express');
 const cors = require('cors');
 

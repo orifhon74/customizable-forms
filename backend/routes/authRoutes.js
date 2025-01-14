@@ -3,7 +3,17 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-require('dotenv').config();
+// require('dotenv').config();
+
+if (process.env.NODE_ENV === 'development') {
+    // Load from .env.local if it exists
+    require('dotenv').config({ path: '.env.local' });
+    // console.log('Running in DEVELOPMENT mode - using .env.local');
+} else {
+    // Fallback to .env for production or other
+    require('dotenv').config();
+    // console.log('Running in PRODUCTION mode - using .env');
+}
 
 const router = express.Router();
 
