@@ -79,7 +79,7 @@ app.use('/api/user-search', userSearchRoutes); // /api/user-search/search?query=
 const PORT = process.env.PORT || 5001;
 
 sequelize
-    .sync({ force: true }) // Set to true to drop tables on restart
+    .sync()
     .then(() => {
         console.log('Database synced successfully');
         app.listen(PORT, () => {
