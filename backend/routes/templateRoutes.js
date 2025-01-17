@@ -311,8 +311,19 @@ router.post('/', authenticate, async (req, res) => {
         }
 
         // Map topic_id from string to numeric, if needed
-        const topicMapping = { Education: 1, Quiz: 2, Other: 3 };
-        const mappedTopicId = topicMapping[topic_id] || 3;
+        const topicMapping = {
+            Other: 1,
+            Quiz: 2,
+            Feedback: 3,
+            Education: 4,
+            Survey: 5,
+            Job: 6,
+            Health: 7,
+            Research: 8,
+            Finance: 9,
+            Entertainment: 10,
+        };
+        const mappedTopicId = topicMapping[topic_id] || 1;
 
         // 1) Create the template
         const template = await Template.create({
@@ -387,8 +398,19 @@ router.put('/:id', authenticate, async (req, res) => {
         }
 
         // Map topic
-        const topicMapping = { Education: 1, Quiz: 2, Other: 3 };
-        const mappedTopicId = topicMapping[topic_id] || 3;
+        const topicMapping = {
+            Other: 1,
+            Quiz: 2,
+            Feedback: 3,
+            Education: 4,
+            Survey: 5,
+            Job: 6,
+            Health: 7,
+            Research: 8,
+            Finance: 9,
+            Entertainment: 10,
+        };
+        const mappedTopicId = topicMapping[topic_id] || 1;
 
         // 1) Update the template fields
         await template.update({

@@ -268,9 +268,16 @@ function TemplateForm() {
                                         value={topic}
                                         onChange={(e) => setTopic(e.target.value)}
                                     >
-                                        <option value="Education">Education</option>
-                                        <option value="Quiz">Quiz</option>
                                         <option value="Other">Other</option>
+                                        <option value="Quiz">Quiz</option>
+                                        <option value="Feedback">Feedback</option>
+                                        <option value="Education">Education</option>
+                                        <option value="Survey">Survey</option>
+                                        <option value="Job">Job Application</option>
+                                        <option value="Health">Health</option>
+                                        <option value="Research">Research</option>
+                                        <option value="Finance">Finance</option>
+                                        <option value="Entertainment">Entertainment</option>
                                     </Form.Select>
                                 </Form.Group>
                             </Row>

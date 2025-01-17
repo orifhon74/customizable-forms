@@ -29,7 +29,6 @@ const Template = sequelize.define('Template', {
     topic_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        // you can still map "Education" => 1, "Quiz" => 2, "Other" => 3, etc. in the routes
     },
     access_type: {
         type: DataTypes.STRING, // 'public' or 'private'
