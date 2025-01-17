@@ -420,7 +420,7 @@ function Templates() {
                                 >
                                     <div className="mb-2">
                                         <strong>Form ID:</strong> {form.id} |{' '}
-                                        <strong>Submitted by User ID:</strong> {form.user_id}
+                                        <strong>Submitted by User ID:</strong> {form.User?.username ?? 'Unknown'}
                                     </div>
 
                                     {/* If FormAnswers exist */}
