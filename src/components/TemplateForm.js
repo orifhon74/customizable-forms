@@ -1,6 +1,6 @@
 // src/components/TemplateForm.js
 
-import React, {useState, useEffect, useContext} from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { storage } from '../firebase'; // Firebase storage
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -17,7 +17,7 @@ import {
     InputGroup,
     Card,
 } from 'react-bootstrap';
-import {LanguageContext} from "../context/LanguageContext";
+import { LanguageContext } from "../context/LanguageContext";
 
 function TemplateForm() {
     const location = useLocation();
@@ -34,11 +34,11 @@ function TemplateForm() {
     const [topic, setTopic] = useState('Other'); // Default to "Other"
     const [imageUrl, setImageUrl] = useState('');
 
-    // Question arrays
-    const [stringQuestions, setStringQuestions] = useState(['', '', '', '']);
-    const [multilineQuestions, setMultilineQuestions] = useState(['', '', '', '']);
-    const [intQuestions, setIntQuestions] = useState(['', '', '', '']); // text-based "integer" questions
-    const [checkboxQuestions, setCheckboxQuestions] = useState(['', '', '', '']);
+    /**
+     * questions: an array of objects [{ question_text, question_type }]
+     * Instead of separate arrays for string/multiline/int/checkbox.
+     */
+    const [questions, setQuestions] = useState([]);
 
     // Tags
     const [tags, setTags] = useState([]);
@@ -50,7 +50,6 @@ function TemplateForm() {
     const [uploading, setUploading] = useState(false);
 
     const API_URL = process.env.REACT_APP_API_URL;
-
     const { t } = useContext(LanguageContext);
 
     // -----------------------------
@@ -92,40 +91,27 @@ function TemplateForm() {
                     setImageUrl(data.image_url || '');
                     setTags(data.tags || []);
 
-                    setStringQuestions([
-                        data.custom_string1_question || '',
-                        data.custom_string2_question || '',
-                        data.custom_string3_question || '',
-                        data.custom_string4_question || '',
-                    ]);
-                    setMultilineQuestions([
-                        data.custom_multiline1_question || '',
-                        data.custom_multiline2_question || '',
-                        data.custom_multiline3_question || '',
-                        data.custom_multiline4_question || '',
-                    ]);
-                    setIntQuestions([
-                        data.custom_int1_question || '',
-                        data.custom_int2_question || '',
-                        data.custom_int3_question || '',
-                        data.custom_int4_question || '',
-                    ]);
-                    setCheckboxQuestions([
-                        data.custom_checkbox1_question || '',
-                        data.custom_checkbox2_question || '',
-                        data.custom_checkbox3_question || '',
-                        data.custom_checkbox4_question || '',
-                    ]);
+                    // If your backend returns an array of questions under data.Questions:
+                    if (data.Questions) {
+                        setQuestions(
+                            data.Questions.map((q) => ({
+                                question_text: q.question_text,
+                                question_type: q.question_type,
+                            }))
+                        );
+                    } else {
+                        setQuestions([]);
+                    }
                 } catch (err) {
                     setError(err.message);
                 }
             };
             fetchTemplate();
         }
-    }, [isEditMode, templateId]);
+    }, [isEditMode, templateId, API_URL]);
 
     // -----------------------------
-    // Image upload
+    // Image Upload
     // -----------------------------
     const handleImageUpload = async (e) => {
         const file = e.target?.files?.[0];
@@ -149,6 +135,27 @@ function TemplateForm() {
     };
 
     // -----------------------------
+    // Unlimited Questions Logic
+    // -----------------------------
+    const handleAddQuestion = () => {
+        // Default question is a single-line
+        setQuestions((prev) => [
+            ...prev,
+            { question_text: '', question_type: 'string' },
+        ]);
+    };
+
+    const handleRemoveQuestion = (index) => {
+        setQuestions((prev) => prev.filter((_, i) => i !== index));
+    };
+
+    const handleQuestionChange = (index, field, value) => {
+        setQuestions((prev) =>
+            prev.map((q, i) => (i === index ? { ...q, [field]: value } : q))
+        );
+    };
+
+    // -----------------------------
     // Submit (create or update)
     // -----------------------------
     const handleSubmit = async (e) => {
@@ -163,11 +170,11 @@ function TemplateForm() {
         }
 
         const url = isEditMode
-            ? `http://localhost:5001/api/templates/${templateId}`
-            : 'http://localhost:5001/api/templates';
+            ? `${API_URL}/api/templates/${templateId}`
+            : `${API_URL}/api/templates`;
         const method = isEditMode ? 'PUT' : 'POST';
 
-        // Send arrays in the request body
+        // Build request body for unlimited questions
         const requestBody = {
             title,
             description,
@@ -175,10 +182,7 @@ function TemplateForm() {
             topic_id: topic,
             image_url: imageUrl,
             tags,
-            stringQuestions,
-            multilineQuestions,
-            intQuestions,
-            checkboxQuestions,
+            questions, // your dynamic array
         };
 
         try {
@@ -214,7 +218,7 @@ function TemplateForm() {
                 <Card className="bg-secondary text-light mb-4">
                     <Card.Body>
                         <h1 className="mb-4">
-                            {isEditMode ? t('editTemplate') : t('createTemplate')}
+                            {isEditMode ? 'Edit Template' : 'Create Template'}
                         </h1>
 
                         {error && <Alert variant="danger">{error}</Alert>}
@@ -223,7 +227,7 @@ function TemplateForm() {
                         <Form onSubmit={handleSubmit}>
                             {/* Title */}
                             <Form.Group className="mb-3" controlId="formTitle">
-                                <Form.Label>{t('title')}</Form.Label>
+                                <Form.Label>Title</Form.Label>
                                 <Form.Control
                                     type="text"
                                     placeholder="Enter a title"
@@ -235,7 +239,7 @@ function TemplateForm() {
 
                             {/* Description */}
                             <Form.Group className="mb-3" controlId="formDescription">
-                                <Form.Label>{t('description')}</Form.Label>
+                                <Form.Label>Description</Form.Label>
                                 <Form.Control
                                     as="textarea"
                                     rows={3}
@@ -248,7 +252,7 @@ function TemplateForm() {
                             {/* Access & Topic */}
                             <Row className="mb-3">
                                 <Form.Group as={Col} controlId="formAccessType">
-                                    <Form.Label>{t('accessType')}</Form.Label>
+                                    <Form.Label>Access Type</Form.Label>
                                     <Form.Select
                                         value={accessType}
                                         onChange={(e) => setAccessType(e.target.value)}
@@ -259,7 +263,7 @@ function TemplateForm() {
                                 </Form.Group>
 
                                 <Form.Group as={Col} controlId="formTopic">
-                                    <Form.Label>{t('topic')}</Form.Label>
+                                    <Form.Label>Topic</Form.Label>
                                     <Form.Select
                                         value={topic}
                                         onChange={(e) => setTopic(e.target.value)}
@@ -273,7 +277,7 @@ function TemplateForm() {
 
                             {/* Image Upload */}
                             <Form.Group className="mb-3" controlId="formImageUpload">
-                                <Form.Label>{t('image')} (Upload to Firebase)</Form.Label>
+                                <Form.Label>Image (Upload to Firebase)</Form.Label>
                                 <Form.Control
                                     type="file"
                                     onChange={handleImageUpload}
@@ -295,7 +299,7 @@ function TemplateForm() {
 
                             {/* Tags */}
                             <Form.Group className="mb-3" controlId="formTags">
-                                <Form.Label>{t('tags')}</Form.Label>
+                                <Form.Label>Tags</Form.Label>
                                 <InputGroup>
                                     <Form.Control
                                         type="text"
@@ -331,84 +335,79 @@ function TemplateForm() {
 
                             <hr />
 
-                            {/* String Questions */}
-                            <h3>String Questions</h3>
-                            {stringQuestions.map((val, i) => (
-                                <Form.Group className="mb-3" key={i}>
-                                    <Form.Label>String Question {i + 1}</Form.Label>
-                                    <Form.Control
-                                        type="text"
-                                        placeholder={`String Question ${i + 1}`}
-                                        value={val}
-                                        onChange={(e) =>
-                                            setStringQuestions((prev) =>
-                                                prev.map((q, idx) => (idx === i ? e.target.value : q))
-                                            )
+                            {/* Unlimited Questions */}
+                            <h3>Questions (Unlimited)</h3>
+                            <p className="text-muted">
+                                Each question has a text prompt and a type.
+                                (Old separate string/multiline/int/checkbox arrays are removed.)
+                            </p>
+                            {questions.map((q, i) => (
+                                <div
+                                    key={i}
+                                    className="p-3 mb-2"
+                                    style={{ backgroundColor: '#495057', borderRadius: '5px' }}
+                                >
+                                    <Form.Group className="mb-2">
+                                        <Form.Label>Question Text</Form.Label>
+                                        <Form.Control
+                                            type="text"
+                                            placeholder={`Question ${i + 1} text`}
+                                            value={q.question_text || ''}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setQuestions((prev) =>
+                                                    prev.map((item, idx) =>
+                                                        idx === i ? { ...item, question_text: val } : item
+                                                    )
+                                                );
+                                            }}
+                                        />
+                                    </Form.Group>
+
+                                    <Form.Group className="mb-2">
+                                        <Form.Label>Question Type</Form.Label>
+                                        <Form.Select
+                                            value={q.question_type || 'string'}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setQuestions((prev) =>
+                                                    prev.map((item, idx) =>
+                                                        idx === i ? { ...item, question_type: val } : item
+                                                    )
+                                                );
+                                            }}
+                                        >
+                                            <option value="string">String (single line)</option>
+                                            <option value="multiline">Multiline</option>
+                                            <option value="integer">Integer</option>
+                                            <option value="checkbox">Checkbox</option>
+                                        </Form.Select>
+                                    </Form.Group>
+
+                                    <Button
+                                        variant="danger"
+                                        size="sm"
+                                        onClick={() =>
+                                            setQuestions((prev) => prev.filter((_, idx) => idx !== i))
                                         }
-                                    />
-                                </Form.Group>
+                                    >
+                                        Remove
+                                    </Button>
+                                </div>
                             ))}
 
-                            <hr />
-
-                            {/* Multiline Questions */}
-                            <h3>Multiline Questions</h3>
-                            {multilineQuestions.map((val, i) => (
-                                <Form.Group className="mb-3" key={i}>
-                                    <Form.Label>Multiline Question {i + 1}</Form.Label>
-                                    <Form.Control
-                                        as="textarea"
-                                        rows={2}
-                                        placeholder={`Multiline Question ${i + 1}`}
-                                        value={val}
-                                        onChange={(e) =>
-                                            setMultilineQuestions((prev) =>
-                                                prev.map((q, idx) => (idx === i ? e.target.value : q))
-                                            )
-                                        }
-                                    />
-                                </Form.Group>
-                            ))}
-
-                            <hr />
-
-                            {/* "Integer" (text) Questions */}
-                            <h3>Integer Questions</h3>
-                            {intQuestions.map((val, i) => (
-                                <Form.Group className="mb-3" key={i}>
-                                    <Form.Label>Integer Question {i + 1}</Form.Label>
-                                    <Form.Control
-                                        type="text"
-                                        placeholder={`Integer Question ${i + 1}`}
-                                        value={val}
-                                        onChange={(e) =>
-                                            setIntQuestions((prev) =>
-                                                prev.map((q, idx) => (idx === i ? e.target.value : q))
-                                            )
-                                        }
-                                    />
-                                </Form.Group>
-                            ))}
-
-                            <hr />
-
-                            {/* Checkbox Questions */}
-                            <h3>Checkbox Questions</h3>
-                            {checkboxQuestions.map((val, i) => (
-                                <Form.Group className="mb-3" key={i}>
-                                    <Form.Label>Checkbox Question {i + 1}</Form.Label>
-                                    <Form.Control
-                                        type="text"
-                                        placeholder={`Checkbox Question ${i + 1}`}
-                                        value={val}
-                                        onChange={(e) =>
-                                            setCheckboxQuestions((prev) =>
-                                                prev.map((q, idx) => (idx === i ? e.target.value : q))
-                                            )
-                                        }
-                                    />
-                                </Form.Group>
-                            ))}
+                            <Button
+                                variant="secondary"
+                                className="mb-3"
+                                onClick={() =>
+                                    setQuestions((prev) => [
+                                        ...prev,
+                                        { question_text: '', question_type: 'string' },
+                                    ])
+                                }
+                            >
+                                + Add Question
+                            </Button>
 
                             <hr />
 

@@ -1,18 +1,20 @@
+// routes/aggregatorRoutes.js
+
 const express = require('express');
 const router = express.Router();
-const { Form, Template } = require('../models');
 const authenticate = require('../middleware/authenticate');
+const { Form, Template, Question, FormAnswer } = require('../models');
 
 /**
- * GET /api/aggregator/:templateId
+ * GET /api/unlimited-aggregator/:templateId
  * - Auth required: admin or template owner
- * - Returns aggregated data (example: average int, most common string, etc.)
+ * - Returns aggregated data for the unlimited questions approach
  */
-router.get('/:templateId', authenticate, async (req, res) => {
+router.get('/unlimited/:templateId', authenticate, async (req, res) => {
     try {
         const { templateId } = req.params;
 
-        // Check ownership or admin privileges
+        // 1) Check ownership or admin
         const template = await Template.findByPk(templateId);
         if (!template) {
             return res.status(404).json({ error: 'Template not found' });
@@ -21,58 +23,124 @@ router.get('/:templateId', authenticate, async (req, res) => {
             return res.status(403).json({ error: 'Unauthorized' });
         }
 
-        // Fetch all forms associated with the template
+        // 2) Fetch forms for this template
         const forms = await Form.findAll({ where: { template_id: templateId } });
-
         const totalForms = forms.length;
         if (totalForms === 0) {
-            return res.json({ total_forms: 0, averages: {}, commonStrings: {}, checkboxStats: {} });
-        }
-
-        // Aggregate integer fields
-        const intFields = ['custom_int1_answer', 'custom_int2_answer', 'custom_int3_answer', 'custom_int4_answer'];
-        const averages = {};
-        for (const field of intFields) {
-            const validForms = forms.filter((f) => f[field] !== null && !isNaN(f[field]));
-            const sum = validForms.reduce((acc, f) => acc + Number(f[field]), 0);
-            averages[field] = validForms.length ? sum / validForms.length : null;
-        }
-
-        // Aggregate string fields (most frequent answer)
-        const stringFields = ['custom_string1_answer', 'custom_string2_answer', 'custom_string3_answer', 'custom_string4_answer'];
-        const commonStrings = {};
-        for (const field of stringFields) {
-            const frequencyMap = {};
-            forms.forEach((form) => {
-                const value = form[field];
-                if (value) {
-                    frequencyMap[value] = (frequencyMap[value] || 0) + 1;
-                }
+            return res.json({
+                totalForms: 0,
+                numericAverages: [],
+                commonStrings: [],
+                checkboxStats: [],
             });
-            const mostCommon = Object.entries(frequencyMap).reduce(
-                (max, entry) => (entry[1] > max[1] ? entry : max),
-                [null, 0]
-            )[0];
-            commonStrings[field] = mostCommon || null;
         }
 
-        // Aggregate checkbox fields (counts of true/false)
-        const checkboxFields = ['custom_checkbox1_answer', 'custom_checkbox2_answer', 'custom_checkbox3_answer', 'custom_checkbox4_answer'];
-        const checkboxStats = {};
-        for (const field of checkboxFields) {
-            const trueCount = forms.filter((f) => f[field] === true).length;
-            const falseCount = forms.filter((f) => f[field] === false).length;
-            checkboxStats[field] = { true: trueCount, false: falseCount };
-        }
+        // 3) Get all form IDs for this template
+        const formIds = forms.map((f) => f.id);
 
-        res.json({
-            total_forms: totalForms,
-            averages,
+        // 4) Fetch all FormAnswers for those forms, including their Question
+        const answers = await FormAnswer.findAll({
+            where: { form_id: formIds },
+            include: [{ model: Question }],
+        });
+        // So each answer looks like:
+        // {
+        //   id: 999,
+        //   form_id: 123,
+        //   question_id: 101,
+        //   answer_value: "some text or true/false"
+        //   Question: { id: 101, question_text, question_type, template_id }
+        // }
+
+        // We'll group them by question_id
+        const answersByQuestion = {};
+        answers.forEach((fa) => {
+            const qid = fa.question_id;
+            if (!answersByQuestion[qid]) {
+                answersByQuestion[qid] = { question: fa.Question, answers: [] };
+            }
+            answersByQuestion[qid].answers.push(fa.answer_value);
+        });
+
+        // Prepare arrays to return in the response
+        const numericAverages = [];   // { question_id, question_text, average }
+        const commonStrings = [];     // { question_id, question_text, mostCommon }
+        const checkboxStats = [];     // { question_id, question_text, trueCount, falseCount }
+
+        // 5) For each question group, determine stats based on question_type
+        Object.values(answersByQuestion).forEach((group) => {
+            const { question, answers } = group;
+            const qType = question.question_type;
+            const qId = question.id;
+            const qText = question.question_text;
+
+            if (qType === 'integer') {
+                // Convert all answer_value to number, filter out invalid
+                const validNums = answers
+                    .map((val) => Number(val))
+                    .filter((v) => !isNaN(v));
+                if (validNums.length > 0) {
+                    const sum = validNums.reduce((acc, n) => acc + n, 0);
+                    const avg = sum / validNums.length;
+                    numericAverages.push({
+                        question_id: qId,
+                        question_text: qText,
+                        average: avg,
+                    });
+                } else {
+                    numericAverages.push({
+                        question_id: qId,
+                        question_text: qText,
+                        average: null,
+                    });
+                }
+            } else if (qType === 'string' || qType === 'multiline') {
+                // Find most common string
+                const freqMap = {};
+                answers.forEach((val) => {
+                    if (!val) return;
+                    freqMap[val] = (freqMap[val] || 0) + 1;
+                });
+                let mostCommon = null;
+                let maxCount = 0;
+                Object.entries(freqMap).forEach(([val, count]) => {
+                    if (count > maxCount) {
+                        mostCommon = val;
+                        maxCount = count;
+                    }
+                });
+                commonStrings.push({
+                    question_id: qId,
+                    question_text: qText,
+                    mostCommon: mostCommon || null,
+                });
+            } else if (qType === 'checkbox') {
+                // Count 'true' vs 'false'
+                let trueCount = 0;
+                let falseCount = 0;
+                answers.forEach((val) => {
+                    if (val === 'true') trueCount++;
+                    else falseCount++;
+                });
+                checkboxStats.push({
+                    question_id: qId,
+                    question_text: qText,
+                    trueCount,
+                    falseCount,
+                });
+            }
+            // If you have more question types, handle them similarly
+        });
+
+        // 6) Return aggregated data
+        return res.json({
+            totalForms,
+            numericAverages,
             commonStrings,
             checkboxStats,
         });
     } catch (err) {
-        console.error('Error aggregating data:', err.message);
+        console.error('Error aggregating data (unlimited approach):', err.message);
         res.status(500).json({ error: 'Failed to get aggregation' });
     }
 });

@@ -1,22 +1,38 @@
 // routes/templateRoutes.js
+
 const express = require('express');
 const router = express.Router();
 const { Op, fn, col, literal } = require('sequelize');
 
 const authenticate = require('../middleware/authenticate');
 const sequelize = require('../db');
-const { Template, Form, TemplateTag, Tag, Comment, Like, User } = require('../models');
 
+// Import your models
+const {
+    Template,
+    Form,
+    TemplateTag,
+    Tag,
+    Comment,
+    Like,
+    User,
+    Question, // For unlimited questions approach
+} = require('../models');
+
+/**
+ * -----------------------------------
+ * GET /api/templates/search
+ * -----------------------------------
+ * Query-based and tag-based search
+ */
 router.get('/search', async (req, res) => {
     const { query, tag } = req.query;
-
-    console.log('Query Params:', { query, tag });
 
     try {
         let whereClause = {};
         let includeClause = [];
 
-        // Add query-based search for title/description
+        // Query-based search for title or description
         if (query) {
             whereClause = {
                 [Op.or]: [
@@ -26,22 +42,20 @@ router.get('/search', async (req, res) => {
             };
         }
 
-        // Add tag-based search
+        // Tag-based search
         if (tag) {
             includeClause.push({
                 model: Tag,
-                where: { id: tag }, // Search for templates with the given tag ID
-                through: { attributes: [] }, // Exclude join table attributes
+                where: { id: tag },
+                through: { attributes: [] },
             });
         }
 
-        // Fetch templates based on query and tag
         const templates = await Template.findAll({
             where: whereClause,
             include: includeClause,
         });
 
-        console.log('Templates Fetched:', templates);
         res.json(templates);
     } catch (err) {
         console.error('Error searching templates:', err.message);
@@ -50,20 +64,22 @@ router.get('/search', async (req, res) => {
 });
 
 /**
+ * -----------------------------------
  * GET /api/templates/latest
- * - No auth required, fetches the latest templates
+ * -----------------------------------
+ * - No auth required, fetches the latest 6 public templates
  */
 router.get('/latest', async (req, res) => {
     try {
         const templates = await Template.findAll({
             where: { access_type: 'public' },
-            order: [['createdAt', 'DESC']], // Order by creation date
-            limit: 6, // Limit the number of results
+            order: [['createdAt', 'DESC']],
+            limit: 6,
             subQuery: false,
             include: [
                 {
                     model: Like,
-                    attributes: [], // No need to include individual likes
+                    attributes: [],
                 },
                 {
                     model: Tag,
@@ -71,7 +87,7 @@ router.get('/latest', async (req, res) => {
                     through: { attributes: [] },
                 },
                 {
-                    // Include the User model so we get username
+                    // Include User to show username
                     model: User,
                     attributes: ['id', 'username'],
                 },
@@ -82,10 +98,7 @@ router.get('/latest', async (req, res) => {
                 'description',
                 'image_url',
                 'user_id',
-                [
-                    sequelize.fn('COUNT', sequelize.col('Likes.id')),
-                    'likeCount', // Aggregate likes for each template
-                ],
+                [sequelize.fn('COUNT', sequelize.col('Likes.id')), 'likeCount'],
             ],
             group: ['Template.id', 'Tags.id', 'User.id'],
         });
@@ -98,7 +111,10 @@ router.get('/latest', async (req, res) => {
 });
 
 /**
- * GET /api/templates/top - Fetch top 5 most popular public templates
+ * -----------------------------------
+ * GET /api/templates/top
+ * -----------------------------------
+ * - Fetch top 5 most popular public templates
  */
 router.get('/top', async (req, res) => {
     try {
@@ -107,11 +123,11 @@ router.get('/top', async (req, res) => {
             include: [
                 {
                     model: Form,
-                    attributes: [], // Exclude raw Form data
+                    attributes: [],
                 },
                 {
                     model: Like,
-                    attributes: [], // Exclude raw Like data
+                    attributes: [],
                 },
             ],
             attributes: [
@@ -120,12 +136,12 @@ router.get('/top', async (req, res) => {
                 'description',
                 'image_url',
                 'user_id',
-                [sequelize.fn('COUNT', sequelize.col('Forms.id')), 'forms_count'], // Count forms
-                [sequelize.fn('COUNT', sequelize.col('Likes.id')), 'likeCount'], // Count likes
+                [sequelize.fn('COUNT', sequelize.col('Forms.id')), 'forms_count'],
+                [sequelize.fn('COUNT', sequelize.col('Likes.id')), 'likeCount'],
             ],
-            group: ['Template.id'], // Group by template ID
-            order: [[sequelize.literal('forms_count'), 'DESC']], // Order by forms count
-            limit: 5, // Limit the number of results
+            group: ['Template.id'],
+            order: [[sequelize.literal('forms_count'), 'DESC']],
+            limit: 5,
             subQuery: false,
         });
 
@@ -137,8 +153,10 @@ router.get('/top', async (req, res) => {
 });
 
 /**
+ * -----------------------------------
  * GET /api/templates/public
- * - No auth required, returns only access_type = 'public'
+ * -----------------------------------
+ * - Returns all public templates
  */
 router.get('/public', async (req, res) => {
     try {
@@ -147,7 +165,7 @@ router.get('/public', async (req, res) => {
             include: [
                 {
                     model: Like,
-                    attributes: [], // No need to include individual likes
+                    attributes: [],
                 },
                 {
                     model: Tag,
@@ -155,7 +173,6 @@ router.get('/public', async (req, res) => {
                     through: { attributes: [] },
                 },
                 {
-                    // Include the User model so we get username
                     model: User,
                     attributes: ['id', 'username'],
                 },
@@ -166,10 +183,7 @@ router.get('/public', async (req, res) => {
                 'description',
                 'image_url',
                 'user_id',
-                [
-                    sequelize.fn('COUNT', sequelize.col('Likes.id')),
-                    'likeCount', // Aggregate likes for each template
-                ],
+                [sequelize.fn('COUNT', sequelize.col('Likes.id')), 'likeCount'],
             ],
             group: ['Template.id', 'Tags.id', 'User.id'],
         });
@@ -182,12 +196,16 @@ router.get('/public', async (req, res) => {
 });
 
 /**
+ * -----------------------------------
  * GET /api/templates/:id
- * Fetch template by ID including tags, comments, and likes
+ * -----------------------------------
+ * - Fetch one template (plus tags, comments, likes, optionally questions)
  */
 router.get('/:id', async (req, res) => {
     try {
-        const template = await Template.findByPk(req.params.id, {
+        const templateId = req.params.id;
+
+        const template = await Template.findByPk(templateId, {
             include: [
                 {
                     model: Tag,
@@ -202,6 +220,10 @@ router.get('/:id', async (req, res) => {
                     model: Like,
                     attributes: ['id', 'user_id'],
                 },
+                {
+                  model: Question,
+                  attributes: ['id', 'question_text', 'question_type'],
+                },
             ],
         });
 
@@ -209,7 +231,7 @@ router.get('/:id', async (req, res) => {
             return res.status(404).json({ error: 'Template not found' });
         }
 
-        // Check if the template is public, owned by the user, or user is admin
+        // If template is private, only the owner or admin can see it
         if (
             template.access_type !== 'public' &&
             req.user?.id !== template.user_id &&
@@ -221,10 +243,11 @@ router.get('/:id', async (req, res) => {
         // Count likes
         const likeCount = template.Likes?.length || 0;
 
-        res.json({
-            ...template.toJSON(),
-            likeCount,
-        });
+        // Convert to JSON and add likeCount
+        const data = template.toJSON();
+        data.likeCount = likeCount;
+
+        res.json(data);
     } catch (err) {
         console.error('Error fetching template:', err.message);
         res.status(500).json({ error: 'Failed to fetch template' });
@@ -232,8 +255,12 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
+ * -----------------------------------
  * GET /api/templates
- * - Auth required: if admin => all templates, else => user-owned + public
+ * Auth required
+ * -----------------------------------
+ * - If admin, get all
+ * - Otherwise, get user-owned + public
  */
 router.get('/', authenticate, async (req, res) => {
     try {
@@ -258,8 +285,13 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 /**
+ * -----------------------------------
  * POST /api/templates
- * - Auth required: create a new template
+ * Auth required
+ * -----------------------------------
+ * - Create a template
+ * - Create an unlimited array of questions
+ * - Associate tags if any
  */
 router.post('/', authenticate, async (req, res) => {
     try {
@@ -270,26 +302,19 @@ router.post('/', authenticate, async (req, res) => {
             topic_id,
             image_url,
             tags = [],
-            // We'll receive these arrays from the frontend
-            stringQuestions = [],
-            multilineQuestions = [],
-            intQuestions = [],
-            checkboxQuestions = [],
+            // NEW: an array of question objects
+            questions = [],
         } = req.body;
 
         if (!title || !topic_id) {
             return res.status(400).json({ error: 'Title and topic are required' });
         }
 
-        // Map string topic to numeric ID
-        const topicMapping = {
-            Education: 1,
-            Quiz: 2,
-            Other: 3,
-        };
+        // Map topic_id from string to numeric, if needed
+        const topicMapping = { Education: 1, Quiz: 2, Other: 3 };
         const mappedTopicId = topicMapping[topic_id] || 3;
 
-        // Create the new template
+        // 1) Create the template
         const template = await Template.create({
             title,
             description: description || null,
@@ -297,50 +322,22 @@ router.post('/', authenticate, async (req, res) => {
             access_type: access_type || 'public',
             topic_id: mappedTopicId,
             image_url: image_url || null,
-
-            // Single-line
-            custom_string1_question: stringQuestions[0] || '',
-            custom_string2_question: stringQuestions[1] || '',
-            custom_string3_question: stringQuestions[2] || '',
-            custom_string4_question: stringQuestions[3] || '',
-            custom_string1_state: !!stringQuestions[0],
-            custom_string2_state: !!stringQuestions[1],
-            custom_string3_state: !!stringQuestions[2],
-            custom_string4_state: !!stringQuestions[3],
-
-            // Multi-line
-            custom_multiline1_question: multilineQuestions[0] || '',
-            custom_multiline2_question: multilineQuestions[1] || '',
-            custom_multiline3_question: multilineQuestions[2] || '',
-            custom_multiline4_question: multilineQuestions[3] || '',
-            custom_multiline1_state: !!multilineQuestions[0],
-            custom_multiline2_state: !!multilineQuestions[1],
-            custom_multiline3_state: !!multilineQuestions[2],
-            custom_multiline4_state: !!multilineQuestions[3],
-
-            // Integer
-            custom_int1_question: intQuestions[0] || '',
-            custom_int2_question: intQuestions[1] || '',
-            custom_int3_question: intQuestions[2] || '',
-            custom_int4_question: intQuestions[3] || '',
-            custom_int1_state: !!intQuestions[0],
-            custom_int2_state: !!intQuestions[1],
-            custom_int3_state: !!intQuestions[2],
-            custom_int4_state: !!intQuestions[3],
-
-            // Checkboxes
-            custom_checkbox1_question: checkboxQuestions[0] || '',
-            custom_checkbox2_question: checkboxQuestions[1] || '',
-            custom_checkbox3_question: checkboxQuestions[2] || '',
-            custom_checkbox4_question: checkboxQuestions[3] || '',
-            custom_checkbox1_state: !!checkboxQuestions[0],
-            custom_checkbox2_state: !!checkboxQuestions[1],
-            custom_checkbox3_state: !!checkboxQuestions[2],
-            custom_checkbox4_state: !!checkboxQuestions[3],
         });
 
-        // Create/find tags and associate them
-        if (tags && Array.isArray(tags)) {
+        // 2) Create questions
+        // Example question object: { question_text: "What's your name?", question_type: "string" }
+        if (Array.isArray(questions)) {
+            for (const q of questions) {
+                await Question.create({
+                    question_text: q.question_text,
+                    question_type: q.question_type,
+                    template_id: template.id,
+                });
+            }
+        }
+
+        // 3) Create/find tags and link them
+        if (Array.isArray(tags)) {
             for (const tagName of tags) {
                 const [tag] = await Tag.findOrCreate({ where: { name: tagName } });
                 await TemplateTag.create({ template_id: template.id, tag_id: tag.id });
@@ -358,15 +355,16 @@ router.post('/', authenticate, async (req, res) => {
 });
 
 /**
+ * -----------------------------------
  * PUT /api/templates/:id
- * - Auth required: only admin or owner
+ * Auth required
+ * -----------------------------------
+ * - Update a template's fields
+ * - Replace old questions with new questions array
+ * - Update tags
  */
 router.put('/:id', authenticate, async (req, res) => {
     try {
-        console.log('--- PUT /api/templates/:id ---');
-        console.log('Params ID:', req.params.id);
-        console.log('Request Body:', req.body);
-
         const { id } = req.params;
         const {
             title,
@@ -375,25 +373,16 @@ router.put('/:id', authenticate, async (req, res) => {
             topic_id,
             image_url,
             tags = [],
-            stringQuestions = [],
-            multilineQuestions = [],
-            intQuestions = [],
-            checkboxQuestions = [],
+            questions = [], // new unlimited questions
         } = req.body;
 
-        // Check user from authenticate
-        console.log('req.user =>', req.user);
-
-        // Find existing template
         const template = await Template.findByPk(id, { include: [Tag] });
         if (!template) {
-            console.log('No template found for ID:', id);
             return res.status(404).json({ error: 'Template not found' });
         }
 
-        // Check ownership or admin
+        // Ownership or admin check
         if (template.user_id !== req.user.id && req.user.role !== 'admin') {
-            console.log('Ownership check failed');
             return res.status(403).json({ error: 'Unauthorized to update' });
         }
 
@@ -401,72 +390,41 @@ router.put('/:id', authenticate, async (req, res) => {
         const topicMapping = { Education: 1, Quiz: 2, Other: 3 };
         const mappedTopicId = topicMapping[topic_id] || 3;
 
-        // Proceed to update (one shot)
+        // 1) Update the template fields
         await template.update({
             title: title ?? template.title,
             description: description ?? template.description,
             access_type: access_type ?? template.access_type,
             topic_id: mappedTopicId,
             image_url: image_url ?? template.image_url,
-
-            // Single-line
-            custom_string1_question: stringQuestions[0] ?? template.custom_string1_question,
-            custom_string2_question: stringQuestions[1] ?? template.custom_string2_question,
-            custom_string3_question: stringQuestions[2] ?? template.custom_string3_question,
-            custom_string4_question: stringQuestions[3] ?? template.custom_string4_question,
-
-            custom_string1_state: !!stringQuestions[0],
-            custom_string2_state: !!stringQuestions[1],
-            custom_string3_state: !!stringQuestions[2],
-            custom_string4_state: !!stringQuestions[3],
-
-            // Multi-line
-            custom_multiline1_question: multilineQuestions[0] ?? template.custom_multiline1_question,
-            custom_multiline2_question: multilineQuestions[1] ?? template.custom_multiline2_question,
-            custom_multiline3_question: multilineQuestions[2] ?? template.custom_multiline3_question,
-            custom_multiline4_question: multilineQuestions[3] ?? template.custom_multiline4_question,
-
-            custom_multiline1_state: !!multilineQuestions[0],
-            custom_multiline2_state: !!multilineQuestions[1],
-            custom_multiline3_state: !!multilineQuestions[2],
-            custom_multiline4_state: !!multilineQuestions[3],
-
-            // "Integer" (text)
-            custom_int1_question: intQuestions[0] ?? template.custom_int1_question,
-            custom_int2_question: intQuestions[1] ?? template.custom_int2_question,
-            custom_int3_question: intQuestions[2] ?? template.custom_int3_question,
-            custom_int4_question: intQuestions[3] ?? template.custom_int4_question,
-
-            custom_int1_state: !!intQuestions[0],
-            custom_int2_state: !!intQuestions[1],
-            custom_int3_state: !!intQuestions[2],
-            custom_int4_state: !!intQuestions[3],
-
-            // Checkboxes
-            custom_checkbox1_question: checkboxQuestions[0] ?? template.custom_checkbox1_question,
-            custom_checkbox2_question: checkboxQuestions[1] ?? template.custom_checkbox2_question,
-            custom_checkbox3_question: checkboxQuestions[2] ?? template.custom_checkbox3_question,
-            custom_checkbox4_question: checkboxQuestions[3] ?? template.custom_checkbox4_question,
-
-            custom_checkbox1_state: !!checkboxQuestions[0],
-            custom_checkbox2_state: !!checkboxQuestions[1],
-            custom_checkbox3_state: !!checkboxQuestions[2],
-            custom_checkbox4_state: !!checkboxQuestions[3],
         });
 
-        // Update tags
+        // 2) Replace old questions with new
+        //    a) remove all existing questions for this template
+        await Question.destroy({ where: { template_id: template.id } });
+        //    b) create new questions
+        if (Array.isArray(questions)) {
+            for (const q of questions) {
+                await Question.create({
+                    question_text: q.question_text,
+                    question_type: q.question_type,
+                    template_id: template.id,
+                });
+            }
+        }
+
+        // 3) Update tags
         if (Array.isArray(tags)) {
             const tagInstances = [];
             for (const tagName of tags) {
-                const [tag] = await Tag.findOrCreate({ where: { name: tagName } });
-                tagInstances.push(tag);
+                const [tg] = await Tag.findOrCreate({ where: { name: tagName } });
+                tagInstances.push(tg);
             }
             await template.setTags(tagInstances);
         }
 
-        // Reload the updated template
+        // 4) Reload updated template
         const updatedTemplate = await Template.findByPk(id, { include: [Tag] });
-        console.log('Update successful, returning updated template');
         return res.json({
             message: 'Template updated successfully',
             template: updatedTemplate,
@@ -478,8 +436,10 @@ router.put('/:id', authenticate, async (req, res) => {
 });
 
 /**
+ * -----------------------------------
  * DELETE /api/templates/:id
- * - Auth required: only admin or owner
+ * Auth required: only admin or owner
+ * -----------------------------------
  */
 router.delete('/:id', authenticate, async (req, res) => {
     try {
@@ -501,8 +461,10 @@ router.delete('/:id', authenticate, async (req, res) => {
 });
 
 /**
+ * -----------------------------------
  * GET /api/templates/:id/forms
- * - Auth required: only admin or owner
+ * Auth required: owner or admin
+ * -----------------------------------
  */
 router.get('/:id/forms', authenticate, async (req, res) => {
     try {

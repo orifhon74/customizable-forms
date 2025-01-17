@@ -10,77 +10,94 @@ function CreateTemplate() {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [imageUrl, setImageUrl] = useState('');
-    const [topicId, setTopicId] = useState('1'); // default topic ID
+    const [topicId, setTopicId] = useState('Other'); // or 1/2/3, up to your new backend mapping
     const [accessType, setAccessType] = useState('public'); // or 'private'
 
-    // Single-line string questions (up to 4)
-    const [stringQ1, setStringQ1] = useState('');
-    const [stringQ2, setStringQ2] = useState('');
-    const [stringQ3, setStringQ3] = useState('');
-    const [stringQ4, setStringQ4] = useState('');
-
-    // Multi-line text questions (up to 4)
-    const [multilineQ1, setMultilineQ1] = useState('');
-    const [multilineQ2, setMultilineQ2] = useState('');
-    const [multilineQ3, setMultilineQ3] = useState('');
-    const [multilineQ4, setMultilineQ4] = useState('');
-
-    // Integer questions (up to 4)
-    const [intQ1, setIntQ1] = useState('');
-    const [intQ2, setIntQ2] = useState('');
-    const [intQ3, setIntQ3] = useState('');
-    const [intQ4, setIntQ4] = useState('');
-
-    // Checkbox questions (up to 4)
-    const [checkboxQ1, setCheckboxQ1] = useState('');
-    const [checkboxQ2, setCheckboxQ2] = useState('');
-    const [checkboxQ3, setCheckboxQ3] = useState('');
-    const [checkboxQ4, setCheckboxQ4] = useState('');
-
+    const [tags, setTags] = useState(''); // If you want to handle tags as comma-separated
     const [error, setError] = useState(null);
 
+    /**
+     * questions: An array of objects, each { question_text, question_type }
+     * e.g. [{ question_text: 'What is your name?', question_type: 'string' }, ...]
+     */
+    const [questions, setQuestions] = useState([]);
+
+    /**
+     * Add a blank question to the array
+     */
+    const handleAddQuestion = () => {
+        setQuestions((prev) => [
+            ...prev,
+            { question_text: '', question_type: 'string' }, // default
+        ]);
+    };
+
+    /**
+     * Remove a question at a specific index
+     */
+    const handleRemoveQuestion = (index) => {
+        setQuestions((prev) => prev.filter((_, i) => i !== index));
+    };
+
+    /**
+     * Update a question's text or type
+     */
+    const handleQuestionChange = (index, field, value) => {
+        setQuestions((prev) =>
+            prev.map((q, i) =>
+                i === index ? { ...q, [field]: value } : q
+            )
+        );
+    };
+
+    /**
+     * Submit form to create a new template
+     */
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
 
-        // Prepare arrays for each question type
-        const stringQuestions = [stringQ1, stringQ2, stringQ3, stringQ4];
-        const multilineQuestions = [multilineQ1, multilineQ2, multilineQ3, multilineQ4];
-        const intQuestions = [intQ1, intQ2, intQ3, intQ4];
-        const checkboxQuestions = [checkboxQ1, checkboxQ2, checkboxQ3, checkboxQ4];
-
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:5001/api/templates', {
+            if (!token) {
+                throw new Error('You must be logged in to create a template.');
+            }
+
+            // Convert tag string (like "hr, dev, sample") to an array
+            let tagsArray = [];
+            if (tags.trim()) {
+                tagsArray = tags.split(',').map((t) => t.trim());
+            }
+
+            // Build request body for the new unlimited-questions backend
+            const requestBody = {
+                title,
+                description,
+                image_url: imageUrl,
+                topic_id: topicId, // e.g. "Other" or "Quiz" if your backend mapping expects a string
+                access_type: accessType,
+                tags: tagsArray, // the new endpoint can handle tags as an array of strings
+                questions, // the array of { question_text, question_type }
+            };
+
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/api/templates`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({
-                    title,
-                    description,
-                    image_url: imageUrl,
-                    topic_id: parseInt(topicId, 10) || 1,
-                    access_type: accessType,
-                    stringQuestions,
-                    multilineQuestions,
-                    intQuestions,
-                    checkboxQuestions,
-                }),
+                body: JSON.stringify(requestBody),
             });
 
             if (!response.ok) {
-                // Attempt to parse the JSON error message
                 const errData = await response.json().catch(() => null);
                 throw new Error(errData?.error || 'Failed to create template');
             }
 
-            // If successful
             const data = await response.json();
             console.log('Template created:', data);
             alert('Template created successfully!');
-            navigate('/templates'); // or wherever you want to go next
+            navigate('/templates');
         } catch (err) {
             console.error('Error creating template:', err);
             setError(err.message);
@@ -88,15 +105,15 @@ function CreateTemplate() {
     };
 
     return (
-        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <h1>Create Template</h1>
+        <div className="container my-5" style={{ maxWidth: '700px' }}>
+            <h1 className="mb-4">Create Template (Unlimited Questions)</h1>
 
-            {error && <div style={{ color: 'red' }}>{error}</div>}
+            {error && <div className="alert alert-danger">{error}</div>}
 
             <form onSubmit={handleSubmit}>
                 {/* Title */}
-                <div className="form-group">
-                    <label>Title</label>
+                <div className="mb-3">
+                    <label className="form-label">Title</label>
                     <input
                         type="text"
                         className="form-control"
@@ -107,19 +124,19 @@ function CreateTemplate() {
                 </div>
 
                 {/* Description */}
-                <div className="form-group">
-                    <label>Description</label>
+                <div className="mb-3">
+                    <label className="form-label">Description</label>
                     <textarea
                         className="form-control"
+                        rows={3}
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        required
                     />
                 </div>
 
                 {/* Image URL */}
-                <div className="form-group">
-                    <label>Image URL (Optional)</label>
+                <div className="mb-3">
+                    <label className="form-label">Image URL (Optional)</label>
                     <input
                         type="url"
                         className="form-control"
@@ -128,22 +145,25 @@ function CreateTemplate() {
                     />
                 </div>
 
-                {/* Topic ID */}
-                <div className="form-group">
-                    <label>Topic ID (for your DB - required in your backend)</label>
-                    <input
-                        type="number"
-                        className="form-control"
+                {/* Topic */}
+                <div className="mb-3">
+                    <label className="form-label">Topic</label>
+                    <select
+                        className="form-select"
                         value={topicId}
                         onChange={(e) => setTopicId(e.target.value)}
-                    />
+                    >
+                        <option value="Education">Education</option>
+                        <option value="Quiz">Quiz</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
 
                 {/* Access Type */}
-                <div className="form-group">
-                    <label>Access Type</label>
+                <div className="mb-3">
+                    <label className="form-label">Access Type</label>
                     <select
-                        className="form-control"
+                        className="form-select"
                         value={accessType}
                         onChange={(e) => setAccessType(e.target.value)}
                     >
@@ -152,166 +172,74 @@ function CreateTemplate() {
                     </select>
                 </div>
 
-                <hr />
-                <h2>String Questions (up to 4)</h2>
-                <div className="form-group">
-                    <label>String Q1</label>
+                {/* Tags (comma-separated) */}
+                <div className="mb-3">
+                    <label className="form-label">Tags (comma-separated)</label>
                     <input
                         type="text"
                         className="form-control"
-                        value={stringQ1}
-                        onChange={(e) => setStringQ1(e.target.value)}
-                    />
-                </div>
-                <div className="form-group">
-                    <label>String Q2</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={stringQ2}
-                        onChange={(e) => setStringQ2(e.target.value)}
-                    />
-                </div>
-                <div className="form-group">
-                    <label>String Q3</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={stringQ3}
-                        onChange={(e) => setStringQ3(e.target.value)}
-                    />
-                </div>
-                <div className="form-group">
-                    <label>String Q4</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={stringQ4}
-                        onChange={(e) => setStringQ4(e.target.value)}
+                        placeholder="e.g. hr, dev, test"
+                        value={tags}
+                        onChange={(e) => setTags(e.target.value)}
                     />
                 </div>
 
                 <hr />
-                <h2>Multiline Questions (up to 4)</h2>
-                <div className="form-group">
-                    <label>Multiline Q1</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={multilineQ1}
-                        onChange={(e) => setMultilineQ1(e.target.value)}
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Multiline Q2</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={multilineQ2}
-                        onChange={(e) => setMultilineQ2(e.target.value)}
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Multiline Q3</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={multilineQ3}
-                        onChange={(e) => setMultilineQ3(e.target.value)}
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Multiline Q4</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={multilineQ4}
-                        onChange={(e) => setMultilineQ4(e.target.value)}
-                    />
-                </div>
-
-                <hr />
-                <h2>Integer Questions (up to 4)</h2>
-                <div className="form-group">
-                    <label>Int Q1</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={intQ1}
-                        onChange={(e) => setIntQ1(e.target.value)}
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Int Q2</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={intQ2}
-                        onChange={(e) => setIntQ2(e.target.value)}
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Int Q3</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={intQ3}
-                        onChange={(e) => setIntQ3(e.target.value)}
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Int Q4</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={intQ4}
-                        onChange={(e) => setIntQ4(e.target.value)}
-                    />
-                </div>
-
-                <hr />
-                <h2>Checkbox Questions (up to 4)</h2>
-                <p style={{ fontSize: '0.9rem' }}>
-                    (Enter the question text. The state to display in forms
-                    will be determined by your <code>custom_checkboxX_state</code>
-                    field. Just leaving it as normal text fields for the question.)
+                <h3>Questions</h3>
+                <p className="text-muted" style={{ fontSize: '0.9rem' }}>
+                    Add as many questions as you want. Each question has a text and a type.
                 </p>
-                <div className="form-group">
-                    <label>Checkbox Q1</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={checkboxQ1}
-                        onChange={(e) => setCheckboxQ1(e.target.value)}
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Checkbox Q2</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={checkboxQ2}
-                        onChange={(e) => setCheckboxQ2(e.target.value)}
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Checkbox Q3</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={checkboxQ3}
-                        onChange={(e) => setCheckboxQ3(e.target.value)}
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Checkbox Q4</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={checkboxQ4}
-                        onChange={(e) => setCheckboxQ4(e.target.value)}
-                    />
-                </div>
+
+                {questions.map((q, index) => (
+                    <div
+                        key={index}
+                        className="card mb-3 p-3"
+                        style={{ backgroundColor: '#f8f9fa' }}
+                    >
+                        <div className="mb-2">
+                            <label className="form-label">Question Text</label>
+                            <input
+                                type="text"
+                                className="form-control"
+                                value={q.question_text}
+                                onChange={(e) =>
+                                    handleQuestionChange(index, 'question_text', e.target.value)
+                                }
+                                placeholder="Enter question prompt"
+                            />
+                        </div>
+                        <div className="mb-2">
+                            <label className="form-label">Question Type</label>
+                            <select
+                                className="form-select"
+                                value={q.question_type}
+                                onChange={(e) =>
+                                    handleQuestionChange(index, 'question_type', e.target.value)
+                                }
+                            >
+                                <option value="string">String (single line)</option>
+                                <option value="multiline">Multiline</option>
+                                <option value="integer">Integer</option>
+                                <option value="checkbox">Checkbox</option>
+                            </select>
+                        </div>
+                        <button
+                            type="button"
+                            className="btn btn-danger"
+                            onClick={() => handleRemoveQuestion(index)}
+                        >
+                            Remove Question
+                        </button>
+                    </div>
+                ))}
+
+                <button
+                    type="button"
+                    className="btn btn-secondary mb-3"
+                    onClick={handleAddQuestion}
+                >
+                    + Add Question
+                </button>
 
                 <hr />
                 <button type="submit" className="btn btn-primary">

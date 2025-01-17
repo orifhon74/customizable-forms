@@ -1,7 +1,16 @@
+// src/components/FormDetails.js
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Container, Row, Col, ListGroup, Button, Alert, Spinner } from 'react-bootstrap';
-
+import {
+    Container,
+    Row,
+    Col,
+    ListGroup,
+    Button,
+    Alert,
+    Spinner
+} from 'react-bootstrap';
 
 function FormDetails() {
     const { formId } = useParams();
@@ -9,7 +18,7 @@ function FormDetails() {
     const [error, setError] = useState(null);
     const navigate = useNavigate();
 
-    // User details
+    // If user is stored in localStorage
     const user = JSON.parse(localStorage.getItem('user'));
     const isAdmin = user?.role === 'admin';
 
@@ -20,6 +29,9 @@ function FormDetails() {
             try {
                 const token = localStorage.getItem('token');
                 if (!token) throw new Error('No token found. Please log in.');
+
+                // We'll assume your new unlimited-questions backend includes FormAnswers in the response:
+                // GET /api/forms/:id => { ... form data ..., FormAnswers: [ { id, answer_value, Question: {...} }, ... ] }
                 const response = await fetch(`${API_URL}/api/forms/${formId}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
@@ -32,8 +44,9 @@ function FormDetails() {
                 setError(err.message);
             }
         };
+
         fetchFormDetails();
-    }, [formId]);
+    }, [formId, API_URL]);
 
     const handleEditForm = () => {
         navigate(`/edit-form/${formId}`);
@@ -76,7 +89,7 @@ function FormDetails() {
             <Row>
                 <Col>
                     <h1 className="mb-4">Form Details</h1>
-                    <ListGroup variant="flush">
+                    <ListGroup variant="flush" className="mb-4">
                         <ListGroup.Item>
                             <strong>Template:</strong> {form.Template?.title || 'N/A'}
                         </ListGroup.Item>
@@ -84,37 +97,35 @@ function FormDetails() {
                             <strong>Submitted By:</strong> {form.User?.username || 'N/A'}
                         </ListGroup.Item>
                         <ListGroup.Item>
-                            <strong>Date Submitted:</strong> {new Date(form.createdAt).toLocaleDateString()}
+                            <strong>Date Submitted:</strong>{' '}
+                            {new Date(form.createdAt).toLocaleDateString()}
                         </ListGroup.Item>
                     </ListGroup>
-                </Col>
-            </Row>
 
-            <Row className="mt-4">
-                <Col>
                     <h2>Answers</h2>
-                    <ListGroup>
-                        {Object.keys(form)
-                            .filter((key) => key.includes('_answer') && form[key])
-                            .map((key) => {
-                                const questionKey = key.replace('_answer', '_question');
-                                const question = form.Template[questionKey];
-                                return (
-                                    <ListGroup.Item key={key}>
-                                        <strong>{question || key.replace('_answer', '')}:</strong>{' '}
-                                        {typeof form[key] === 'boolean'
-                                            ? form[key]
-                                                ? 'Yes'
-                                                : 'No'
-                                            : form[key]}
-                                    </ListGroup.Item>
-                                );
-                            })}
-                    </ListGroup>
+                    {form.FormAnswers && form.FormAnswers.length > 0 ? (
+                        <ListGroup>
+                            {form.FormAnswers.map((fa) => (
+                                <ListGroup.Item key={fa.id}>
+                                    {/* If your backend includes fa.Question object */}
+                                    <strong>
+                                        {fa.Question?.question_text || 'Unknown Question'}:
+                                    </strong>{' '}
+                                    {/* Convert 'true'/'false' string if it's a checkbox */}
+                                    {fa.Question?.question_type === 'checkbox'
+                                        ? fa.answer_value === 'true'
+                                            ? 'Yes'
+                                            : 'No'
+                                        : fa.answer_value}
+                                </ListGroup.Item>
+                            ))}
+                        </ListGroup>
+                    ) : (
+                        <Alert variant="info">No answers found for this form.</Alert>
+                    )}
                 </Col>
             </Row>
 
-            {/* Edit and Delete buttons for admins or the template owner */}
             {(isAdmin || user?.id === form.Template?.user_id) && (
                 <Row className="mt-4">
                     <Col className="d-flex justify-content-end">

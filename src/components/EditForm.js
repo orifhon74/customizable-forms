@@ -1,68 +1,127 @@
 // src/components/EditForm.js
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Form, Button, Alert, Spinner, Row, Col } from 'react-bootstrap';
 
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+    Container,
+    Form,
+    Button,
+    Alert,
+    Spinner,
+    Row,
+    Col
+} from 'react-bootstrap';
 
 function EditForm() {
     const { formId } = useParams();
-    const [form, setForm] = useState({});
-    const [template, setTemplate] = useState(null);
+    const navigate = useNavigate();
+
+    const [formRecord, setFormRecord] = useState(null);     // The Form object
+    const [template, setTemplate] = useState(null);         // The Template object (with Questions)
+    const [answers, setAnswers] = useState({});             // question_id => answer_value
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
-    const navigate = useNavigate();
 
     const API_URL = process.env.REACT_APP_API_URL;
 
     useEffect(() => {
         const fetchFormAndTemplate = async () => {
-            const token = localStorage.getItem('token');
             try {
-                // Fetch form details
-                const formResp = await fetch(`${API_URL}/api/forms/${formId}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                if (!formResp.ok) throw new Error('Failed to fetch form for editing');
-                const formData = await formResp.json();
-                setForm(formData);
+                const token = localStorage.getItem('token');
+                if (!token) throw new Error('No token. Please log in.');
 
-                // Fetch corresponding template
-                const templateResp = await fetch(`${API_URL}/api/templates/${formData.template_id}`, {
+                // 1) Fetch the form, including FormAnswers -> Question
+                const formRes = await fetch(`${API_URL}/api/forms/${formId}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                if (!templateResp.ok) throw new Error('Failed to fetch template for form');
-                const templateData = await templateResp.json();
+                if (!formRes.ok) {
+                    throw new Error('Failed to fetch form for editing');
+                }
+                const formData = await formRes.json();
+                setFormRecord(formData);
+
+                // 2) Fetch the template associated with this form
+                const templateRes = await fetch(`${API_URL}/api/templates/${formData.template_id}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (!templateRes.ok) {
+                    throw new Error('Failed to fetch template for form');
+                }
+                const templateData = await templateRes.json();
                 setTemplate(templateData);
+
+                // 3) Initialize local "answers" from formData.FormAnswers
+                if (formData.FormAnswers) {
+                    const initialAnswers = {};
+                    formData.FormAnswers.forEach((fa) => {
+                        initialAnswers[fa.question_id] = fa.answer_value;
+                    });
+                    setAnswers(initialAnswers);
+                }
             } catch (err) {
                 setError(err.message);
             }
         };
-        fetchFormAndTemplate();
-    }, [formId]);
 
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setForm((prevForm) => ({
-            ...prevForm,
-            [name]: type === 'checkbox' ? checked : value,
-        }));
+        fetchFormAndTemplate();
+    }, [formId, API_URL]);
+
+    /**
+     * Handle changes for each answer field
+     */
+    const handleAnswerChange = (questionId, questionType, value, checked) => {
+        setAnswers((prev) => {
+            if (questionType === 'checkbox') {
+                return { ...prev, [questionId]: checked ? 'true' : 'false' };
+            }
+            return { ...prev, [questionId]: value };
+        });
     };
 
+    /**
+     * Submit updated answers
+     */
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError(null);
+        setSuccess(null);
+
         const token = localStorage.getItem('token');
+        if (!token) {
+            setError('No token found. Please log in.');
+            return;
+        }
+
         try {
+            // Convert local 'answers' object into array for the backend
+            // e.g. [ { question_id: x, answer_value: "someVal" }, ... ]
+            const updatedFormAnswers = Object.entries(answers).map(([qId, val]) => ({
+                question_id: parseInt(qId, 10),
+                answer_value: val,
+            }));
+
+            // Build the request body. We include other form fields if needed.
+            // e.g. user_id, template_id. Typically you only need form_id + updated answers.
+            const requestBody = {
+                ...formRecord,
+                FormAnswers: updatedFormAnswers,
+            };
+
+            // PUT to /api/forms/:id
             const response = await fetch(`${API_URL}/api/forms/${formId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify(form),
+                body: JSON.stringify(requestBody),
             });
-            if (!response.ok) throw new Error('Failed to update form');
+            if (!response.ok) {
+                throw new Error('Failed to update form');
+            }
+
             setSuccess('Form updated successfully!');
-            navigate(-1); // Go back
+            navigate(-1); // Go back in history
         } catch (err) {
             setError(err.message);
         }
@@ -76,7 +135,7 @@ function EditForm() {
         );
     }
 
-    if (!form || Object.keys(form).length === 0 || !template) {
+    if (!formRecord || !template) {
         return (
             <Container className="d-flex justify-content-center align-items-center vh-100">
                 <Spinner animation="border" />
@@ -88,31 +147,67 @@ function EditForm() {
     return (
         <Container className="my-4">
             <h1 className="text-center mb-4">Edit Form</h1>
+
             {success && <Alert variant="success">{success}</Alert>}
+
             <Form onSubmit={handleSubmit}>
-                <Row>
-                    {Object.keys(form)
-                        .filter((key) => key.includes('_answer')) // Only show answer fields
-                        .map((key) => {
-                            const questionKey = key.replace('_answer', '_question');
-                            const question = template[questionKey];
-                            if (!question) return null; // Skip if template doesn't define that question
+                {/* Map over all the questions from the template */}
+                {template.Questions && template.Questions.length > 0 ? (
+                    <Row>
+                        {template.Questions.map((q) => {
+                            const currentVal = answers[q.id] || '';
                             return (
-                                <Col xs={12} md={6} className="mb-3" key={key}>
-                                    <Form.Group controlId={key}>
-                                        <Form.Label>{question}</Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            name={key}
-                                            value={form[key] || ''}
-                                            onChange={handleChange}
-                                        />
+                                <Col xs={12} md={6} className="mb-3" key={q.id}>
+                                    <Form.Group>
+                                        <Form.Label>{q.question_text}</Form.Label>
+                                        {q.question_type === 'string' && (
+                                            <Form.Control
+                                                type="text"
+                                                value={currentVal}
+                                                onChange={(e) =>
+                                                    handleAnswerChange(q.id, q.question_type, e.target.value)
+                                                }
+                                            />
+                                        )}
+                                        {q.question_type === 'multiline' && (
+                                            <Form.Control
+                                                as="textarea"
+                                                rows={3}
+                                                value={currentVal}
+                                                onChange={(e) =>
+                                                    handleAnswerChange(q.id, q.question_type, e.target.value)
+                                                }
+                                            />
+                                        )}
+                                        {q.question_type === 'integer' && (
+                                            <Form.Control
+                                                type="number"
+                                                value={currentVal}
+                                                onChange={(e) =>
+                                                    handleAnswerChange(q.id, q.question_type, e.target.value)
+                                                }
+                                            />
+                                        )}
+                                        {q.question_type === 'checkbox' && (
+                                            <Form.Check
+                                                type="checkbox"
+                                                label="Check if true"
+                                                checked={currentVal === 'true'}
+                                                onChange={(e) =>
+                                                    handleAnswerChange(q.id, q.question_type, e.target.value, e.target.checked)
+                                                }
+                                            />
+                                        )}
                                     </Form.Group>
                                 </Col>
                             );
                         })}
-                </Row>
-                <div className="d-flex justify-content-between">
+                    </Row>
+                ) : (
+                    <Alert variant="info">No questions found for this template.</Alert>
+                )}
+
+                <div className="d-flex justify-content-between mt-4">
                     <Button variant="secondary" onClick={() => navigate(-1)}>
                         Cancel
                     </Button>

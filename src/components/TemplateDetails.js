@@ -1,8 +1,19 @@
-import React, {useState, useEffect, useContext} from 'react';
-import { useParams } from 'react-router-dom';
-import { Container, Row, Col, Card, Button, Alert, Form, Spinner, Badge, ListGroup } from 'react-bootstrap';
-import {LanguageContext} from "../context/LanguageContext";
+// src/components/TemplateDetails.js
 
+import React, { useState, useEffect, useContext } from 'react';
+import { useParams } from 'react-router-dom';
+import {
+    Container,
+    Row,
+    Col,
+    Card,
+    Button,
+    Alert,
+    Form,
+    Badge,
+    ListGroup,
+} from 'react-bootstrap';
+import { LanguageContext } from '../context/LanguageContext';
 
 function TemplateDetails() {
     const { id } = useParams();
@@ -10,11 +21,10 @@ function TemplateDetails() {
     const [comments, setComments] = useState([]);
     const [likes, setLikes] = useState(0);
     const [error, setError] = useState(null);
-    const [likeDisabled, setLikeDisabled] = useState(false); // For disabling like button
-    const [commentContent, setCommentContent] = useState(''); // Controlled input for comment
+    const [likeDisabled, setLikeDisabled] = useState(false);
+    const [commentContent, setCommentContent] = useState('');
 
     const API_URL = process.env.REACT_APP_API_URL;
-
     const { t } = useContext(LanguageContext);
 
     useEffect(() => {
@@ -33,6 +43,7 @@ function TemplateDetails() {
 
                 // Fetch comments
                 const commentsResp = await fetch(`${API_URL}/api/comments/${id}`);
+                if (!commentsResp.ok) throw new Error('Failed to fetch comments');
                 const commentsData = await commentsResp.json();
                 setComments(commentsData);
             } catch (err) {
@@ -42,7 +53,7 @@ function TemplateDetails() {
         };
 
         fetchTemplateDetails();
-    }, [id]);
+    }, [id, API_URL]);
 
     const handleLike = async () => {
         if (!localStorage.getItem('token')) {
@@ -51,7 +62,7 @@ function TemplateDetails() {
         }
 
         try {
-            setLikeDisabled(true); // Disable button to prevent multiple clicks
+            setLikeDisabled(true);
             const resp = await fetch(`${API_URL}/api/likes`, {
                 method: 'POST',
                 headers: {
@@ -92,8 +103,8 @@ function TemplateDetails() {
             });
             if (!resp.ok) throw new Error('Failed to add comment');
             const newComment = await resp.json();
-            setComments((prevComments) => [newComment, ...prevComments]);
-            setCommentContent(''); // Clear the input field
+            setComments((prev) => [newComment, ...prev]);
+            setCommentContent('');
         } catch (err) {
             console.error(err.message);
             setError(err.message);
@@ -142,59 +153,22 @@ function TemplateDetails() {
                         </Card.Body>
                     </Card>
 
-                    <Card className="shadow-sm">
+                    {/* If your backend sends an array of questions in data.Questions: */}
+                    <Card className="shadow-sm mb-4">
                         <Card.Body>
                             <Card.Title>{t('questions')}</Card.Title>
-                            <ListGroup variant="flush">
-                                <ListGroup.Item>
-                                    <strong>String Questions</strong>
-                                    <ul>
-                                        {Array.from({ length: 4 }).map((_, index) => {
-                                            const question = template[`custom_string${index + 1}_question`];
-                                            const state = template[`custom_string${index + 1}_state`];
-                                            return state && question ? (
-                                                <li key={index}>{question}</li>
-                                            ) : null;
-                                        })}
-                                    </ul>
-                                </ListGroup.Item>
-                                <ListGroup.Item>
-                                    <strong>Multiline Questions</strong>
-                                    <ul>
-                                        {Array.from({ length: 4 }).map((_, index) => {
-                                            const question = template[`custom_multiline${index + 1}_question`];
-                                            const state = template[`custom_multiline${index + 1}_state`];
-                                            return state && question ? (
-                                                <li key={index}>{question}</li>
-                                            ) : null;
-                                        })}
-                                    </ul>
-                                </ListGroup.Item>
-                                <ListGroup.Item>
-                                    <strong>Integer Questions</strong>
-                                    <ul>
-                                        {Array.from({ length: 4 }).map((_, index) => {
-                                            const question = template[`custom_int${index + 1}_question`];
-                                            const state = template[`custom_int${index + 1}_state`];
-                                            return state && question ? (
-                                                <li key={index}>{question}</li>
-                                            ) : null;
-                                        })}
-                                    </ul>
-                                </ListGroup.Item>
-                                <ListGroup.Item>
-                                    <strong>Checkbox Questions</strong>
-                                    <ul>
-                                        {Array.from({ length: 4 }).map((_, index) => {
-                                            const question = template[`custom_checkbox${index + 1}_question`];
-                                            const state = template[`custom_checkbox${index + 1}_state`];
-                                            return state && question ? (
-                                                <li key={index}>{question}</li>
-                                            ) : null;
-                                        })}
-                                    </ul>
-                                </ListGroup.Item>
-                            </ListGroup>
+                            {template.Questions && template.Questions.length > 0 ? (
+                                <ListGroup variant="flush">
+                                    {template.Questions.map((q, index) => (
+                                        <ListGroup.Item key={index}>
+                                            {/*<strong>Type:</strong> {q.question_type} <br />*/}
+                                            <strong>Question:</strong> {q.question_text}
+                                        </ListGroup.Item>
+                                    ))}
+                                </ListGroup>
+                            ) : (
+                                <Alert variant="info">No questions available.</Alert>
+                            )}
                         </Card.Body>
                     </Card>
                 </Col>

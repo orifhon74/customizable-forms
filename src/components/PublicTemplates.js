@@ -1,9 +1,18 @@
-import React, {useState, useEffect, useContext} from 'react';
-import { Link } from 'react-router-dom';
-import { Container, Row, Col, Card, Button, Badge, Alert } from 'react-bootstrap';
-import { ThemeContext } from '../context/ThemeContext';
-import {LanguageContext} from "../context/LanguageContext";
+// src/components/PublicTemplates.js
 
+import React, { useState, useEffect, useContext } from 'react';
+import { Link } from 'react-router-dom';
+import {
+    Container,
+    Row,
+    Col,
+    Card,
+    Button,
+    Badge,
+    Alert
+} from 'react-bootstrap';
+import { ThemeContext } from '../context/ThemeContext';
+import { LanguageContext } from '../context/LanguageContext';
 
 function PublicTemplates() {
     const [templates, setTemplates] = useState([]);
@@ -11,7 +20,6 @@ function PublicTemplates() {
     const isAuthenticated = !!localStorage.getItem('token');
 
     const API_URL = process.env.REACT_APP_API_URL;
-
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
 
@@ -27,7 +35,7 @@ function PublicTemplates() {
             }
         };
         fetchTemplates();
-    }, []);
+    }, [API_URL]);
 
     const handleLike = async (templateId) => {
         if (!isAuthenticated) {
@@ -46,6 +54,8 @@ function PublicTemplates() {
                 body: JSON.stringify({ template_id: templateId }),
             });
             if (!response.ok) throw new Error('Failed to like template');
+
+            // Update local state to reflect new like count
             const updatedTemplates = templates.map((template) =>
                 template.id === templateId
                     ? { ...template, likeCount: (template.likeCount || 0) + 1 }
@@ -58,9 +68,8 @@ function PublicTemplates() {
     };
 
     if (error) {
-        return <div>Error: {error}</div>;
+        return <div style={{ color: 'red' }}>Error: {error}</div>;
     }
-
 
     return (
         <Container className="my-4">
@@ -75,7 +84,7 @@ function PublicTemplates() {
                     {templates.map((template) => (
                         <Col key={template.id}>
                             <Card
-                                className="shadow-sm"
+                                className="shadow-sm h-100 d-flex flex-column"
                                 style={{
                                     backgroundColor: theme === 'dark' ? '#343a40' : '#fff',
                                     color: theme === 'dark' ? '#fff' : '#000',
@@ -83,21 +92,24 @@ function PublicTemplates() {
                                 }}
                             >
                                 {template.image_url ? (
-                                    <Card.Img
-                                        variant="top"
-                                        src={template.image_url}
-                                        alt={template.title}
-                                        style={{
-                                            height: '150px',
-                                            objectFit: 'cover',
-                                            backgroundColor: theme === 'dark' ? '#495057' : '#f8f9fa',
-                                        }}
-                                    />
+                                    <div style={{ height: '180px', overflow: 'hidden' }}>
+                                        <Card.Img
+                                            variant="top"
+                                            src={template.image_url}
+                                            alt={template.title}
+                                            style={{
+                                                height: '100%',
+                                                width: '100%',
+                                                objectFit: 'cover',
+                                                backgroundColor: theme === 'dark' ? '#495057' : '#f8f9fa',
+                                            }}
+                                        />
+                                    </div>
                                 ) : (
                                     <div
                                         className="d-flex align-items-center justify-content-center"
                                         style={{
-                                            height: '150px',
+                                            height: '180px',
                                             backgroundColor: theme === 'dark' ? '#495057' : '#f8f9fa',
                                             color: theme === 'dark' ? '#adb5bd' : '#6c757d',
                                             fontStyle: 'italic',
@@ -106,69 +118,100 @@ function PublicTemplates() {
                                         No Image
                                     </div>
                                 )}
-                                <Card.Body>
-                                    <Card.Title>{template.title}</Card.Title>
-                                    <Card.Text className="text-truncate" style={{ maxHeight: '40px' }}>
+
+                                <Card.Body className="d-flex flex-column">
+                                    <Card.Title className="mb-1" style={{ fontWeight: '600' }}>
+                                        {template.title}
+                                    </Card.Title>
+
+                                    {/*
+                    3) A slightly larger maxHeight for description
+                       so text can wrap but keep cards uniform.
+                  */}
+                                    <Card.Text
+                                        className="text-truncate"
+                                        style={{ maxHeight: '3rem', overflow: 'hidden' }}
+                                    >
                                         {template.description}
                                     </Card.Text>
-                                    <Card.Text>
+
+                                    <Card.Text className="mb-1">
                                         <strong>Author:</strong> {template.User?.username ?? 'Unknown'}
                                     </Card.Text>
-                                    <Card.Text>
+                                    <Card.Text className="mb-2">
                                         <strong>Likes:</strong> {template.likeCount || 0}
                                     </Card.Text>
-                                    <div className="d-flex justify-content-between mb-3">
-                                        <Button
-                                            onClick={() => handleLike(template.id)}
-                                            style={{
-                                                backgroundColor: '#007bff',
-                                                border: 'none',
-                                                borderRadius: '50%',
-                                                width: '40px',
-                                                height: '40px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                            }}
-                                            title="Like this template"
-                                        >
-                                                <span
-                                                    role="img"
-                                                    aria-label="thumbs up"
-                                                    style={{ fontSize: '1.2rem' }}
+
+                                    {/* The "bottom" section of the card */}
+                                    <div className="mt-auto">
+                                        {/* Like + Details row */}
+                                        <div className="d-flex justify-content-between align-items-center mb-3">
+                                            {/*
+                        4) Round "thumbs up" button
+                      */}
+                                            <Button
+                                                onClick={() => handleLike(template.id)}
+                                                style={{
+                                                    backgroundColor: '#007bff',
+                                                    border: 'none',
+                                                    borderRadius: '50%',
+                                                    width: '40px',
+                                                    height: '40px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
+                                                    cursor: 'pointer',
+                                                }}
+                                                title="Like this template"
+                                            >
+                        <span role="img" aria-label="thumbs up" style={{ fontSize: '1.2rem' }}>
+                          👍
+                        </span>
+                                            </Button>
+
+                                            <Link to={`/templates/${template.id}`}>
+                                                <Button
+                                                    variant={theme === 'dark' ? 'outline-light' : 'outline-secondary'}
                                                 >
-                                                    👍
-                                                </span>
-                                        </Button>
-                                        <Link to={`/templates/${template.id}`}>
-                                            <Button variant={theme === 'dark' ? 'outline-light' : 'outline-secondary'}>
-                                                {t('viewDetails')}
-                                            </Button>
-                                        </Link>
-                                    </div>
-                                    {isAuthenticated && (
-                                        <Link to={`/submit-form/${template.id}`}>
-                                            <Button variant={theme === 'dark' ? 'success' : 'success'} className="w-100">
-                                                Fill Out
-                                            </Button>
-                                        </Link>
-                                    )}
-                                    {template.Tags?.length > 0 && (
-                                        <div className="mt-3">
-                                            <h6>Tags:</h6>
-                                            <div>
-                                                {template.Tags.map((tag) => (
-                                                    <Badge
-                                                        key={tag.id}
-                                                        bg={theme === 'dark' ? 'dark' : 'secondary'}
-                                                        className="me-1"
-                                                    >
-                                                        {tag.name}
-                                                    </Badge>
-                                                ))}
-                                            </div>
+                                                    {t('viewDetails')}
+                                                </Button>
+                                            </Link>
                                         </div>
-                                    )}
+
+                                        {/*
+                      Fill Out button if user is authenticated
+                      (like the original code).
+                    */}
+                                        {isAuthenticated && (
+                                            <Link to={`/submit-form/${template.id}`}>
+                                                <Button
+                                                    variant={theme === 'dark' ? 'success' : 'success'}
+                                                    className="w-100"
+                                                >
+                                                    Fill Out
+                                                </Button>
+                                            </Link>
+                                        )}
+
+                                        {/* Tags, if present */}
+                                        {template.Tags?.length > 0 && (
+                                            <div className="mt-3">
+                                                <h6>Tags:</h6>
+                                                <div>
+                                                    {template.Tags.map((tag) => (
+                                                        <Badge
+                                                            key={tag.id}
+                                                            bg={theme === 'dark' ? 'dark' : 'secondary'}
+                                                            className="me-1"
+                                                        >
+                                                            {tag.name}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </Card.Body>
                             </Card>
                         </Col>
