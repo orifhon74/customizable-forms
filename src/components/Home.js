@@ -175,6 +175,20 @@ function Home() {
                                                 {t('viewDetails')}
                                             </Button>
                                         </div>
+
+                                        {isAuthenticated && (
+                                            <Link to={`/submit-form/${template.id}`}>
+                                                <Button
+                                                    variant={theme === 'dark' ? 'success' : 'success'}
+                                                    className="w-100"
+                                                    style={{ marginTop: '10px' }}
+                                                    type={"button"}
+                                                    class="btn btn-warning"
+                                                >
+                                                    Fill Out
+                                                </Button>
+                                            </Link>
+                                        )}
                                     </Card.Body>
                                 </Card>
                             </Col>
@@ -261,6 +275,20 @@ function Home() {
                                                 <Button variant="outline-secondary">{t('viewDetails')}</Button>
                                             </Link>
                                         </div>
+
+                                        {isAuthenticated && (
+                                            <Link to={`/submit-form/${template.id}`}>
+                                                <Button
+                                                    variant={theme === 'dark' ? 'success' : 'success'}
+                                                    className="w-100"
+                                                    style={{ marginTop: '10px' }}
+                                                    type={"button"}
+                                                    class="btn btn-warning"
+                                                >
+                                                    Fill Out
+                                                </Button>
+                                            </Link>
+                                        )}
                                     </Card.Body>
                                 </Card>
                             </Col>

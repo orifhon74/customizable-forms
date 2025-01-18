@@ -188,6 +188,8 @@ function PublicTemplates() {
                                                 <Button
                                                     variant={theme === 'dark' ? 'success' : 'success'}
                                                     className="w-100"
+                                                    type={"button"}
+                                                    class="btn btn-warning"
                                                 >
                                                     Fill Out
                                                 </Button>
