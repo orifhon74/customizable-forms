@@ -67,9 +67,9 @@ function PublicTemplates() {
         }
     };
 
-    if (error) {
-        return <div style={{ color: 'red' }}>Error: {error}</div>;
-    }
+    // if (error) {
+    //     return <div style={{ color: 'red' }}>Error: {error}</div>;
+    // }
 
     return (
         <Container className="my-4">

@@ -4,7 +4,6 @@
 if (process.env.NODE_ENV === 'development') {
     // Load from .env.local if it exists
     require('dotenv').config({ path: '.env.local' });
-    console.log(process.env.DB_PASSWORD);
     console.log('Running in DEVELOPMENT mode - using .env.local');
 } else {
     // Fallback to .env for production or other

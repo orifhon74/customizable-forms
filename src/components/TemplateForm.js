@@ -89,7 +89,13 @@ function TemplateForm() {
                     setAccessType(data.access_type || 'public');
                     setTopic(data.topic_id || 'Other');
                     setImageUrl(data.image_url || '');
-                    setTags(data.tags || []);
+
+                    const normalizedTags =
+                        Array.isArray(data.tags) ? data.tags :
+                            Array.isArray(data.Tags) ? data.Tags.map(t => t.name) :
+                                [];
+
+                    setTags(normalizedTags);
 
                     // If your backend returns an array of questions under data.Questions:
                     if (data.Questions) {
