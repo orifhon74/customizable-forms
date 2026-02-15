@@ -94,10 +94,17 @@ Like.belongsTo(Template, {
 Template.belongsToMany(Tag, {
     through: TemplateTag,
     foreignKey: 'template_id',
+    otherKey: 'tag_id',
+    constraints: true,
+    onDelete: 'CASCADE',
 });
+
 Tag.belongsToMany(Template, {
     through: TemplateTag,
     foreignKey: 'tag_id',
+    otherKey: 'template_id',
+    constraints: true,
+    onDelete: 'CASCADE',
 });
 
 /**

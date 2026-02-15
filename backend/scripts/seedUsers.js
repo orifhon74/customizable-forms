@@ -1,6 +1,9 @@
 'use strict';
 
-require('dotenv').config({ path: '.env.local', override: true });
+// require('dotenv').config({ path: '.env.local', override: true });
+if (process.env.NODE_ENV !== 'production') {
+    require('dotenv').config({ path: '.env.local' });
+}
 
 const bcrypt = require('bcryptjs');
 const sequelize = require('../db');

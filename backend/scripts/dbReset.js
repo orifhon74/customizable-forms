@@ -1,7 +1,10 @@
 'use strict';
 
 // Load env first (avoid weird terminal env overrides)
-require('dotenv').config({ path: '.env.local', override: true });
+// require('dotenv').config({ path: '.env.local', override: true });
+if (process.env.NODE_ENV !== 'production') {
+    require('dotenv').config({ path: '.env.local' });
+}
 
 const sequelize = require('../db');
 
