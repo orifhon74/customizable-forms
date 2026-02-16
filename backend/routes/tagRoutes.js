@@ -11,9 +11,9 @@ const sequelize = require('../db');
  * GET /api/tags/cloud
  * Returns tag cloud: [{ id, name, count }]
  *
- * Fix: exclude tags with zero templates
- * - Uses INNER JOIN (required: true)
- * - Adds HAVING COUNT(Templates.id) > 0 to be explicit
+ * Privacy fix:
+ * - Only return tags that have at least ONE *public* template.
+ * - Prevents leaking the existence of private templates via tags.
  */
 router.get('/cloud', async (req, res) => {
     try {
@@ -23,7 +23,8 @@ router.get('/cloud', async (req, res) => {
                     model: Template,
                     attributes: [],
                     through: { attributes: [] },
-                    required: true, // <-- INNER JOIN: only tags attached to at least 1 template
+                    required: true,                 // INNER JOIN: only tags w/ matching templates
+                    where: { access_type: 'public' } // ✅ only public templates count
                 },
             ],
             attributes: [
@@ -32,6 +33,7 @@ router.get('/cloud', async (req, res) => {
                 [sequelize.fn('COUNT', sequelize.col('Templates.id')), 'count'],
             ],
             group: ['Tag.id', 'Tag.name'],
+            // redundant with required:true + where, but ok to keep explicit
             having: sequelize.where(
                 sequelize.fn('COUNT', sequelize.col('Templates.id')),
                 '>',

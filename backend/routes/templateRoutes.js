@@ -6,6 +6,7 @@ const { Op, fn, col, literal } = require('sequelize');
 
 const authenticate = require('../middleware/authenticate');
 const sequelize = require('../db');
+const authenticateOptional = require('../middleware/authenticateOptional');
 
 // Import your models
 const {
@@ -24,22 +25,41 @@ const {
  * GET /api/templates/search
  * -----------------------------------
  * Query-based and tag-based search
+ *
+ * Privacy fix:
+ * - Guests: only public templates
+ * - Logged-in users: public + their own templates
+ * - Admin: everything
  */
-router.get('/search', async (req, res) => {
+router.get('/search', authenticateOptional, async (req, res) => {
     const { query, tag } = req.query;
 
     try {
-        let whereClause = {};
-        let includeClause = [];
+        const whereClause = {};
+        const includeClause = [];
+
+        // ✅ Access control
+        // Guests: only public
+        // Users: public OR owned
+        // Admin: no filter
+        if (!req.user) {
+            whereClause.access_type = 'public';
+        } else if (req.user.role !== 'admin') {
+            whereClause[Op.or] = [
+                { access_type: 'public' },
+                { user_id: req.user.id },
+            ];
+        }
 
         // Query-based search for title or description
         if (query) {
-            whereClause = {
+            whereClause[Op.and] = whereClause[Op.and] || [];
+            whereClause[Op.and].push({
                 [Op.or]: [
                     { title: { [Op.like]: `%${query}%` } },
                     { description: { [Op.like]: `%${query}%` } },
                 ],
-            };
+            });
         }
 
         // Tag-based search
@@ -54,6 +74,7 @@ router.get('/search', async (req, res) => {
         const templates = await Template.findAll({
             where: whereClause,
             include: includeClause,
+            order: [['createdAt', 'DESC']],
         });
 
         res.json(templates);
@@ -201,7 +222,7 @@ router.get('/public', async (req, res) => {
  * -----------------------------------
  * - Fetch one template (plus tags, comments, likes, optionally questions)
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateOptional, async (req, res) => {
     try {
         const templateId = req.params.id;
 
