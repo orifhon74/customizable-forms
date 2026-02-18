@@ -2,7 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { Op, fn, col, literal } = require('sequelize');
+const { Op } = require('sequelize');
 
 const authenticate = require('../middleware/authenticate');
 const sequelize = require('../db');
@@ -17,15 +17,35 @@ const {
     Comment,
     Like,
     User,
-    Question, // For unlimited questions approach
+    Question,
 } = require('../models');
+
+const topicMapping = {
+    Other: 1,
+    Quiz: 2,
+    Feedback: 3,
+    Education: 4,
+    Survey: 5,
+    Job: 6,
+    Health: 7,
+    Research: 8,
+    Finance: 9,
+    Entertainment: 10,
+};
+
+function mapTopicId(topic_id) {
+    // If already a number, use it directly (common if frontend sends numeric)
+    if (typeof topic_id === 'number') return topic_id;
+    if (typeof topic_id === 'string' && /^\d+$/.test(topic_id)) return Number(topic_id);
+
+    // Otherwise map from string topic name
+    return topicMapping[topic_id] || 1;
+}
 
 /**
  * -----------------------------------
  * GET /api/templates/search
  * -----------------------------------
- * Query-based and tag-based search
- *
  * Privacy fix:
  * - Guests: only public templates
  * - Logged-in users: public + their own templates
@@ -38,17 +58,11 @@ router.get('/search', authenticateOptional, async (req, res) => {
         const whereClause = {};
         const includeClause = [];
 
-        // ✅ Access control
-        // Guests: only public
-        // Users: public OR owned
-        // Admin: no filter
+        // Access control
         if (!req.user) {
             whereClause.access_type = 'public';
         } else if (req.user.role !== 'admin') {
-            whereClause[Op.or] = [
-                { access_type: 'public' },
-                { user_id: req.user.id },
-            ];
+            whereClause[Op.or] = [{ access_type: 'public' }, { user_id: req.user.id }];
         }
 
         // Query-based search for title or description
@@ -62,7 +76,7 @@ router.get('/search', authenticateOptional, async (req, res) => {
             });
         }
 
-        // Tag-based search
+        // Tag-based search (NOTE: currently expects tag = Tag.id)
         if (tag) {
             includeClause.push({
                 model: Tag,
@@ -98,20 +112,9 @@ router.get('/latest', async (req, res) => {
             limit: 6,
             subQuery: false,
             include: [
-                {
-                    model: Like,
-                    attributes: [],
-                },
-                {
-                    model: Tag,
-                    attributes: ['id', 'name'],
-                    through: { attributes: [] },
-                },
-                {
-                    // Include User to show username
-                    model: User,
-                    attributes: ['id', 'username'],
-                },
+                { model: Like, attributes: [] },
+                { model: Tag, attributes: ['id', 'name'], through: { attributes: [] } },
+                { model: User, attributes: ['id', 'username'] },
             ],
             attributes: [
                 'id',
@@ -119,6 +122,7 @@ router.get('/latest', async (req, res) => {
                 'description',
                 'image_url',
                 'user_id',
+                'allow_form_editing',
                 [sequelize.fn('COUNT', sequelize.col('Likes.id')), 'likeCount'],
             ],
             group: ['Template.id', 'Tags.id', 'User.id'],
@@ -142,14 +146,8 @@ router.get('/top', async (req, res) => {
         const templates = await Template.findAll({
             where: { access_type: 'public' },
             include: [
-                {
-                    model: Form,
-                    attributes: [],
-                },
-                {
-                    model: Like,
-                    attributes: [],
-                },
+                { model: Form, attributes: [] },
+                { model: Like, attributes: [] },
             ],
             attributes: [
                 'id',
@@ -157,6 +155,7 @@ router.get('/top', async (req, res) => {
                 'description',
                 'image_url',
                 'user_id',
+                'allow_form_editing',
                 [sequelize.fn('COUNT', sequelize.col('Forms.id')), 'forms_count'],
                 [sequelize.fn('COUNT', sequelize.col('Likes.id')), 'likeCount'],
             ],
@@ -184,19 +183,9 @@ router.get('/public', async (req, res) => {
         const templates = await Template.findAll({
             where: { access_type: 'public' },
             include: [
-                {
-                    model: Like,
-                    attributes: [],
-                },
-                {
-                    model: Tag,
-                    attributes: ['id', 'name'],
-                    through: { attributes: [] },
-                },
-                {
-                    model: User,
-                    attributes: ['id', 'username'],
-                },
+                { model: Like, attributes: [] },
+                { model: Tag, attributes: ['id', 'name'], through: { attributes: [] } },
+                { model: User, attributes: ['id', 'username'] },
             ],
             attributes: [
                 'id',
@@ -204,6 +193,7 @@ router.get('/public', async (req, res) => {
                 'description',
                 'image_url',
                 'user_id',
+                'allow_form_editing',
                 [sequelize.fn('COUNT', sequelize.col('Likes.id')), 'likeCount'],
             ],
             group: ['Template.id', 'Tags.id', 'User.id'],
@@ -220,7 +210,7 @@ router.get('/public', async (req, res) => {
  * -----------------------------------
  * GET /api/templates/:id
  * -----------------------------------
- * - Fetch one template (plus tags, comments, likes, optionally questions)
+ * - Fetch one template (plus tags, comments, likes, questions)
  */
 router.get('/:id', authenticateOptional, async (req, res) => {
     try {
@@ -228,23 +218,10 @@ router.get('/:id', authenticateOptional, async (req, res) => {
 
         const template = await Template.findByPk(templateId, {
             include: [
-                {
-                    model: Tag,
-                    through: { attributes: [] },
-                    attributes: ['id', 'name'],
-                },
-                {
-                    model: Comment,
-                    attributes: ['id', 'user_id', 'content', 'createdAt'],
-                },
-                {
-                    model: Like,
-                    attributes: ['id', 'user_id'],
-                },
-                {
-                  model: Question,
-                  attributes: ['id', 'question_text', 'question_type'],
-                },
+                { model: Tag, through: { attributes: [] }, attributes: ['id', 'name'] },
+                { model: Comment, attributes: ['id', 'user_id', 'content', 'createdAt'] },
+                { model: Like, attributes: ['id', 'user_id'] },
+                { model: Question, attributes: ['id', 'question_text', 'question_type'] },
             ],
         });
 
@@ -291,10 +268,7 @@ router.get('/', authenticate, async (req, res) => {
         } else {
             templates = await Template.findAll({
                 where: {
-                    [Op.or]: [
-                        { access_type: 'public' },
-                        { user_id: req.user.id },
-                    ],
+                    [Op.or]: [{ access_type: 'public' }, { user_id: req.user.id }],
                 },
             });
         }
@@ -311,8 +285,8 @@ router.get('/', authenticate, async (req, res) => {
  * Auth required
  * -----------------------------------
  * - Create a template
- * - Create an unlimited array of questions
- * - Associate tags if any
+ * - Create questions array
+ * - Associate tags
  */
 router.post('/', authenticate, async (req, res) => {
     try {
@@ -323,28 +297,15 @@ router.post('/', authenticate, async (req, res) => {
             topic_id,
             image_url,
             tags = [],
-            // NEW: an array of question objects
             questions = [],
+            allow_form_editing, // NEW
         } = req.body;
 
         if (!title || !topic_id) {
             return res.status(400).json({ error: 'Title and topic are required' });
         }
 
-        // Map topic_id from string to numeric, if needed
-        const topicMapping = {
-            Other: 1,
-            Quiz: 2,
-            Feedback: 3,
-            Education: 4,
-            Survey: 5,
-            Job: 6,
-            Health: 7,
-            Research: 8,
-            Finance: 9,
-            Entertainment: 10,
-        };
-        const mappedTopicId = topicMapping[topic_id] || 1;
+        const mappedTopicId = mapTopicId(topic_id);
 
         // 1) Create the template
         const template = await Template.create({
@@ -354,10 +315,10 @@ router.post('/', authenticate, async (req, res) => {
             access_type: access_type || 'public',
             topic_id: mappedTopicId,
             image_url: image_url || null,
+            allow_form_editing: Boolean(allow_form_editing), // NEW
         });
 
         // 2) Create questions
-        // Example question object: { question_text: "What's your name?", question_type: "string" }
         if (Array.isArray(questions)) {
             for (const q of questions) {
                 await Question.create({
@@ -368,7 +329,7 @@ router.post('/', authenticate, async (req, res) => {
             }
         }
 
-        // 3) Create/find tags and link them
+        // 3) Tags
         if (Array.isArray(tags)) {
             for (const tagName of tags) {
                 const [tag] = await Tag.findOrCreate({ where: { name: tagName } });
@@ -391,8 +352,8 @@ router.post('/', authenticate, async (req, res) => {
  * PUT /api/templates/:id
  * Auth required
  * -----------------------------------
- * - Update a template's fields
- * - Replace old questions with new questions array
+ * - Update template fields
+ * - Replace questions
  * - Update tags
  */
 router.put('/:id', authenticate, async (req, res) => {
@@ -405,7 +366,8 @@ router.put('/:id', authenticate, async (req, res) => {
             topic_id,
             image_url,
             tags = [],
-            questions = [], // new unlimited questions
+            questions = [],
+            allow_form_editing, // NEW
         } = req.body;
 
         const template = await Template.findByPk(id, { include: [Tag] });
@@ -418,20 +380,7 @@ router.put('/:id', authenticate, async (req, res) => {
             return res.status(403).json({ error: 'Unauthorized to update' });
         }
 
-        // Map topic
-        const topicMapping = {
-            Other: 1,
-            Quiz: 2,
-            Feedback: 3,
-            Education: 4,
-            Survey: 5,
-            Job: 6,
-            Health: 7,
-            Research: 8,
-            Finance: 9,
-            Entertainment: 10,
-        };
-        const mappedTopicId = topicMapping[topic_id] || 1;
+        const mappedTopicId = topic_id !== undefined ? mapTopicId(topic_id) : template.topic_id;
 
         // 1) Update the template fields
         await template.update({
@@ -440,12 +389,13 @@ router.put('/:id', authenticate, async (req, res) => {
             access_type: access_type ?? template.access_type,
             topic_id: mappedTopicId,
             image_url: image_url ?? template.image_url,
+            // Only update if explicitly provided, otherwise preserve existing
+            ...(allow_form_editing !== undefined ? { allow_form_editing: Boolean(allow_form_editing) } : {}),
         });
 
-        // 2) Replace old questions with new
-        //    a) remove all existing questions for this template
+        // 2) Replace questions
         await Question.destroy({ where: { template_id: template.id } });
-        //    b) create new questions
+
         if (Array.isArray(questions)) {
             for (const q of questions) {
                 await Question.create({

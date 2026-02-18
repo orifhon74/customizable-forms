@@ -6,55 +6,82 @@ const { Op } = require("sequelize");
 
 const authenticate = require("../middleware/authenticate");
 
-// ✅ IMPORTANT: include sequelize here
+// Import sequelize + models from central models/index.js
 const { sequelize, Form, Template, User, Question, FormAnswer } = require("../models");
+
+/**
+ * Helper: check if a user can VIEW a specific form
+ * - admin OR template owner OR submitter
+ */
+function canViewForm(reqUser, form) {
+    if (!reqUser || !form) return false;
+    if (reqUser.role === "admin") return true;
+    if (form.Template && reqUser.id === form.Template.user_id) return true; // template owner
+    if (reqUser.id === form.user_id) return true; // submitter
+    return false;
+}
+
+/**
+ * Helper: check if a user can EDIT a specific form
+ * - admin OR template owner OR (submitter AND template.allow_form_editing)
+ */
+function canEditForm(reqUser, form) {
+    if (!reqUser || !form) return false;
+    if (reqUser.role === "admin") return true;
+
+    const isOwner = form.Template && reqUser.id === form.Template.user_id;
+    if (isOwner) return true;
+
+    const isSubmitter = reqUser.id === form.user_id;
+    const allowSubmitterEdit = Boolean(form.Template?.allow_form_editing);
+
+    return isSubmitter && allowSubmitterEdit;
+}
+
+/**
+ * Helper: check if a user can DELETE a specific form
+ * - admin OR template owner OR submitter
+ * (You can tighten this if you want submitters not to delete)
+ */
+function canDeleteForm(reqUser, form) {
+    if (!reqUser || !form) return false;
+    if (reqUser.role === "admin") return true;
+
+    const isOwner = form.Template && reqUser.id === form.Template.user_id;
+    if (isOwner) return true;
+
+    const isSubmitter = reqUser.id === form.user_id;
+    return isSubmitter;
+}
 
 /**
  * -----------------------------------
  * GET /api/forms
  * Auth required
  * -----------------------------------
- * - If admin, fetch all forms
- * - Otherwise, fetch only forms that belong to the user's templates
+ * - Admin: all forms
+ * - Normal user: ONLY forms they personally submitted
  */
 router.get("/", authenticate, async (req, res) => {
     try {
         const user = req.user;
-        let forms;
 
-        if (user.role === "admin") {
-            // Admin sees all forms
-            forms = await Form.findAll({
-                include: [
-                    { model: Template, attributes: ["id", "title"] },
-                    { model: User, attributes: ["id", "username"] },
-                ],
-                order: [["createdAt", "DESC"]],
-            });
-        } else {
-            // Normal users only see forms from templates they own
-            const userTemplates = await Template.findAll({
-                where: { user_id: user.id },
-                attributes: ["id"],
-            });
+        const whereClause =
+            user.role === "admin"
+                ? {}
+                : { user_id: user.id }; // ✅ user's own submissions
 
-            const templateIds = userTemplates.map((t) => t.id);
-
-            // If user has no templates, return []
-            if (templateIds.length === 0) {
-                return res.json([]);
-            }
-
-            forms = await Form.findAll({
-                // ✅ use Op.in
-                where: { template_id: { [Op.in]: templateIds } },
-                include: [
-                    { model: Template, attributes: ["id", "title"] },
-                    { model: User, attributes: ["id", "username"] },
-                ],
-                order: [["createdAt", "DESC"]],
-            });
-        }
+        const forms = await Form.findAll({
+            where: whereClause,
+            include: [
+                {
+                    model: Template,
+                    attributes: ["id", "title", "user_id", "allow_form_editing"],
+                },
+                { model: User, attributes: ["id", "username"] },
+            ],
+            order: [["createdAt", "DESC"]],
+        });
 
         res.json(forms);
     } catch (err) {
@@ -65,26 +92,65 @@ router.get("/", authenticate, async (req, res) => {
 
 /**
  * -----------------------------------
+ * GET /api/forms/template/:templateId
+ * Auth required
+ * -----------------------------------
+ * - Template owner/admin can see ALL submissions for that template
+ */
+router.get("/template/:templateId", authenticate, async (req, res) => {
+    try {
+        const { templateId } = req.params;
+
+        const template = await Template.findByPk(templateId, {
+            attributes: ["id", "title", "user_id", "access_type", "allow_form_editing"],
+        });
+
+        if (!template) {
+            return res.status(404).json({ error: "Template not found" });
+        }
+
+        // Only admin or template owner can see all submissions for a template
+        if (req.user.role !== "admin" && req.user.id !== template.user_id) {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        const forms = await Form.findAll({
+            where: { template_id: templateId },
+            include: [
+                { model: Template, attributes: ["id", "title", "user_id", "allow_form_editing"] },
+                { model: User, attributes: ["id", "username"] },
+                {
+                    model: FormAnswer,
+                    include: [{ model: Question, attributes: ["id", "question_text", "question_type"] }],
+                },
+            ],
+            order: [["createdAt", "DESC"]],
+        });
+
+        res.json(forms);
+    } catch (err) {
+        console.error("Error fetching forms for template:", err);
+        res.status(500).json({ error: "Failed to fetch forms" });
+    }
+});
+
+/**
+ * -----------------------------------
  * GET /api/forms/:id
  * Auth required
  * -----------------------------------
- * - Fetch details of a specific form
- * - Only the template owner or an admin can see it
+ * - Admin OR template owner OR submitter can view it
  */
 router.get("/:id", authenticate, async (req, res) => {
     try {
         const form = await Form.findByPk(req.params.id, {
             include: [
-                { model: Template }, // need template for ownership check
+                { model: Template }, // includes allow_form_editing if your model has it
                 { model: User, attributes: ["id", "username"] },
                 {
                     model: FormAnswer,
                     include: [
-                        {
-                            model: Question,
-                            // ✅ include question_type because UI checks it
-                            attributes: ["id", "question_text", "question_type"],
-                        },
+                        { model: Question, attributes: ["id", "question_text", "question_type"] },
                     ],
                 },
             ],
@@ -94,8 +160,7 @@ router.get("/:id", authenticate, async (req, res) => {
             return res.status(404).json({ error: "Form not found" });
         }
 
-        // Only template owner or admin
-        if (req.user.role !== "admin" && req.user.id !== form.Template.user_id) {
+        if (!canViewForm(req.user, form)) {
             return res.status(403).json({ error: "Unauthorized" });
         }
 
@@ -111,13 +176,15 @@ router.get("/:id", authenticate, async (req, res) => {
  * POST /api/forms/:templateId/submit
  * Auth required
  * -----------------------------------
- * - Submits a new form referencing unlimited questions
+ * - Submit a new form
  */
 router.post("/:templateId/submit", authenticate, async (req, res) => {
     try {
         const { templateId } = req.params;
 
-        const template = await Template.findByPk(templateId);
+        const template = await Template.findByPk(templateId, {
+            attributes: ["id", "user_id", "access_type"],
+        });
         if (!template) {
             return res.status(404).json({ error: "Template not found" });
         }
@@ -143,11 +210,10 @@ router.post("/:templateId/submit", authenticate, async (req, res) => {
         for (const ans of answers) {
             if (!ans || typeof ans.question_id !== "number") continue;
 
-            // Optional: verify question belongs to this template
             const question = await Question.findOne({
                 where: { id: ans.question_id, template_id: templateId },
+                attributes: ["id"],
             });
-
             if (!question) continue;
 
             await FormAnswer.create({
@@ -169,65 +235,11 @@ router.post("/:templateId/submit", authenticate, async (req, res) => {
 
 /**
  * -----------------------------------
- * GET /api/forms/template/:templateId
+ * PUT /api/forms/:id
  * Auth required
  * -----------------------------------
- * - Get all forms for a specific template
- * - Only admin or template owner can see them
- */
-router.get("/template/:templateId", authenticate, async (req, res) => {
-    try {
-        const { templateId } = req.params;
-
-        const template = await Template.findByPk(templateId);
-        if (!template) {
-            return res.status(404).json({ error: "Template not found" });
-        }
-
-        // Check if user is admin or owner (or allow if public)
-        if (
-            req.user.role !== "admin" &&
-            req.user.id !== template.user_id &&
-            template.access_type !== "public"
-        ) {
-            return res.status(403).json({ error: "Unauthorized" });
-        }
-
-        const forms = await Form.findAll({
-            where: { template_id: templateId },
-            include: [
-                { model: User, attributes: ["id", "username"] },
-                {
-                    model: FormAnswer,
-                    include: [
-                        { model: Question, attributes: ["id", "question_text", "question_type"] },
-                    ],
-                },
-            ],
-            order: [["createdAt", "DESC"]],
-        });
-
-        const filteredForms = forms.filter(
-            (form) =>
-                req.user.role === "admin" ||
-                form.user_id === req.user.id ||
-                req.user.id === template.user_id
-        );
-
-        res.json(filteredForms);
-    } catch (err) {
-        console.error("Error fetching forms:", err);
-        res.status(500).json({ error: "Failed to fetch forms" });
-    }
-});
-
-/**
- * -----------------------------------
- * PUT /api/forms/:id
- * Auth required: only admin or template owner
- * -----------------------------------
- * - Updates a form's answers (FormAnswers)
- * - Does NOT allow changing form.template_id or form.user_id
+ * - Admin OR template owner OR (submitter if template.allow_form_editing === true)
+ * - Updates answers (replace strategy)
  */
 router.put("/:id", authenticate, async (req, res) => {
     let t;
@@ -238,7 +250,7 @@ router.put("/:id", authenticate, async (req, res) => {
         const { FormAnswers } = req.body;
 
         const form = await Form.findByPk(id, {
-            include: [{ model: Template }],
+            include: [{ model: Template }], // must include allow_form_editing + owner id
             transaction: t,
             lock: t.LOCK.UPDATE,
         });
@@ -248,13 +260,11 @@ router.put("/:id", authenticate, async (req, res) => {
             return res.status(404).json({ error: "Form not found" });
         }
 
-        // Ownership check
-        if (req.user.role !== "admin" && req.user.id !== form.Template.user_id) {
+        if (!canEditForm(req.user, form)) {
             await t.rollback();
             return res.status(403).json({ error: "Unauthorized to edit this form" });
         }
 
-        // Validate payload
         if (!Array.isArray(FormAnswers)) {
             await t.rollback();
             return res.status(400).json({
@@ -307,11 +317,13 @@ router.put("/:id", authenticate, async (req, res) => {
         // Return updated form
         const updatedForm = await Form.findByPk(id, {
             include: [
-                { model: Template },
+                { model: Template, attributes: ["id", "title", "user_id", "allow_form_editing"] },
                 { model: User, attributes: ["id", "username", "email"] },
                 {
                     model: FormAnswer,
-                    include: [{ model: Question, attributes: ["id", "question_text", "question_type"] }],
+                    include: [
+                        { model: Question, attributes: ["id", "question_text", "question_type"] },
+                    ],
                 },
             ],
         });
@@ -327,20 +339,23 @@ router.put("/:id", authenticate, async (req, res) => {
 /**
  * -----------------------------------
  * DELETE /api/forms/:id
- * Auth required: only admin or template owner
+ * Auth required
  * -----------------------------------
+ * - Admin OR template owner OR submitter can delete
  */
 router.delete("/:id", authenticate, async (req, res) => {
     try {
         const { id } = req.params;
 
-        const form = await Form.findByPk(id, { include: [Template] });
+        const form = await Form.findByPk(id, {
+            include: [{ model: Template }],
+        });
+
         if (!form) {
             return res.status(404).json({ error: "Form not found" });
         }
 
-        // Only template owner or admin can delete
-        if (req.user.role !== "admin" && req.user.id !== form.Template.user_id) {
+        if (!canDeleteForm(req.user, form)) {
             return res.status(403).json({ error: "Unauthorized to delete this form" });
         }
 

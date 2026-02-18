@@ -3,40 +3,57 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../db'); // your Sequelize instance
 
 /**
- * The Template model now only stores general info about the template:
- * title, description, user_id, topic_id, etc.
+ * The Template model stores general info about the template:
+ * title, description, user_id, topic_id, access_type, image_url, etc.
  *
- * We remove or never add the old columns like custom_string1_question, etc.
  * All questions are stored in the separate "Question" model.
  */
-const Template = sequelize.define('Template', {
-    title: {
-        type: DataTypes.STRING,
-        allowNull: false,
+const Template = sequelize.define(
+    'Template',
+    {
+        title: {
+            type: DataTypes.STRING,
+            allowNull: false,
+        },
+
+        description: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+        },
+
+        image_url: {
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
+
+        user_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+        },
+
+        topic_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+        },
+
+        access_type: {
+            type: DataTypes.STRING, // 'public' or 'private'
+            defaultValue: 'public',
+        },
+
+        /**
+         * NEW: whether the template owner allows submitters to edit their submissions.
+         * default false keeps things “form-submissions-are-final” unless explicitly enabled.
+         */
+        allow_form_editing: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
     },
-    description: {
-        type: DataTypes.TEXT,
-        allowNull: true,
-    },
-    image_url: {
-        type: DataTypes.STRING,
-        allowNull: true,
-    },
-    user_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false, // reference to your user
-    },
-    topic_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-    },
-    access_type: {
-        type: DataTypes.STRING, // 'public' or 'private'
-        defaultValue: 'public',
-    },
-}, {
-    timestamps: true,
-    // tableName: 'Templates', // optional if you want a custom table name
-});
+    {
+        timestamps: true,
+    }
+);
 
 module.exports = Template;
