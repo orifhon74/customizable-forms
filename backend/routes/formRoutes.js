@@ -23,7 +23,7 @@ function canViewForm(reqUser, form) {
 
 /**
  * Helper: check if a user can EDIT a specific form
- * - admin OR template owner OR (submitter AND template.allow_form_editing)
+ * - admin OR template owner OR (submitter AND template.allow_editing)
  */
 function canEditForm(reqUser, form) {
     if (!reqUser || !form) return false;
@@ -33,7 +33,7 @@ function canEditForm(reqUser, form) {
     if (isOwner) return true;
 
     const isSubmitter = reqUser.id === form.user_id;
-    const allowSubmitterEdit = Boolean(form.Template?.allow_form_editing);
+    const allowSubmitterEdit = Boolean(form.Template?.allow_editing);
 
     return isSubmitter && allowSubmitterEdit;
 }
@@ -76,7 +76,7 @@ router.get("/", authenticate, async (req, res) => {
             include: [
                 {
                     model: Template,
-                    attributes: ["id", "title", "user_id", "allow_form_editing"],
+                    attributes: ["id", "title", "user_id", "allow_editing"],
                 },
                 { model: User, attributes: ["id", "username"] },
             ],
@@ -102,7 +102,7 @@ router.get("/template/:templateId", authenticate, async (req, res) => {
         const { templateId } = req.params;
 
         const template = await Template.findByPk(templateId, {
-            attributes: ["id", "title", "user_id", "access_type", "allow_form_editing"],
+            attributes: ["id", "title", "user_id", "access_type", "allow_editing"],
         });
 
         if (!template) {
@@ -117,7 +117,7 @@ router.get("/template/:templateId", authenticate, async (req, res) => {
         const forms = await Form.findAll({
             where: { template_id: templateId },
             include: [
-                { model: Template, attributes: ["id", "title", "user_id", "allow_form_editing"] },
+                { model: Template, attributes: ["id", "title", "user_id", "allow_editing"] },
                 { model: User, attributes: ["id", "username"] },
                 {
                     model: FormAnswer,
@@ -145,7 +145,7 @@ router.get("/:id", authenticate, async (req, res) => {
     try {
         const form = await Form.findByPk(req.params.id, {
             include: [
-                { model: Template }, // includes allow_form_editing if your model has it
+                { model: Template }, // includes allow_editing if your model has it
                 { model: User, attributes: ["id", "username"] },
                 {
                     model: FormAnswer,
@@ -238,7 +238,7 @@ router.post("/:templateId/submit", authenticate, async (req, res) => {
  * PUT /api/forms/:id
  * Auth required
  * -----------------------------------
- * - Admin OR template owner OR (submitter if template.allow_form_editing === true)
+ * - Admin OR template owner OR (submitter if template.allow_editing === true)
  * - Updates answers (replace strategy)
  */
 router.put("/:id", authenticate, async (req, res) => {
@@ -250,7 +250,7 @@ router.put("/:id", authenticate, async (req, res) => {
         const { FormAnswers } = req.body;
 
         const form = await Form.findByPk(id, {
-            include: [{ model: Template }], // must include allow_form_editing + owner id
+            include: [{ model: Template }], // must include allow_editing + owner id
             transaction: t,
             lock: t.LOCK.UPDATE,
         });
@@ -317,7 +317,7 @@ router.put("/:id", authenticate, async (req, res) => {
         // Return updated form
         const updatedForm = await Form.findByPk(id, {
             include: [
-                { model: Template, attributes: ["id", "title", "user_id", "allow_form_editing"] },
+                { model: Template, attributes: ["id", "title", "user_id", "allow_editing"] },
                 { model: User, attributes: ["id", "username", "email"] },
                 {
                     model: FormAnswer,

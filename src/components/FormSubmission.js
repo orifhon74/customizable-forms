@@ -21,7 +21,8 @@ function FormSubmission() {
     const [template, setTemplate] = useState(null);
     const [answers, setAnswers] = useState({});
     const [error, setError] = useState(null);
-    const [success, setSuccess] = useState(null);
+    const [success, setSuccess] = useState(null); // string
+    const [submittedFormId, setSubmittedFormId] = useState(null); // NEW
 
     const [loadingTemplate, setLoadingTemplate] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -42,7 +43,12 @@ function FormSubmission() {
                 });
 
                 if (!response.ok) {
-                    throw new Error("Failed to fetch template");
+                    let msg = "Failed to fetch template";
+                    try {
+                        const data = await response.json();
+                        msg = data?.error || data?.message || msg;
+                    } catch {}
+                    throw new Error(msg);
                 }
 
                 const data = await response.json();
@@ -63,7 +69,7 @@ function FormSubmission() {
             }
         };
 
-        fetchTemplate();
+        if (API_URL) fetchTemplate();
     }, [templateId, API_URL]);
 
     const questions = useMemo(() => template?.Questions || [], [template]);
@@ -81,6 +87,7 @@ function FormSubmission() {
         e.preventDefault();
         setError(null);
         setSuccess(null);
+        setSubmittedFormId(null);
 
         const token = localStorage.getItem("token");
         if (!token) {
@@ -93,7 +100,7 @@ function FormSubmission() {
 
             const answersArray = Object.entries(answers).map(([qId, val]) => ({
                 question_id: parseInt(qId, 10),
-                answer_value: val,
+                answer_value: String(val ?? ""),
             }));
 
             const response = await fetch(`${API_URL}/api/forms/${templateId}/submit`, {
@@ -106,11 +113,19 @@ function FormSubmission() {
             });
 
             if (!response.ok) {
-                throw new Error("Failed to submit form");
+                let msg = "Failed to submit form";
+                try {
+                    const data = await response.json();
+                    msg = data?.error || data?.message || msg;
+                } catch {}
+                throw new Error(msg);
             }
 
+            const data = await response.json();
             setSuccess("Form submitted successfully!");
-            // Optional: keep answers as-is, or reset. I’ll reset checkboxes/strings for a clean feel.
+            setSubmittedFormId(data?.form_id ?? null);
+
+            // Reset answers for a clean feel
             const reset = {};
             questions.forEach((q) => {
                 reset[q.id] = q.question_type === "checkbox" ? "false" : "";
@@ -180,9 +195,7 @@ function FormSubmission() {
                     </div>
                     <div>
                         <h1 className="text-2xl font-semibold tracking-tight">Fill Out Form</h1>
-                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                            {template.title}
-                        </p>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{template.title}</p>
                     </div>
                 </div>
 
@@ -201,13 +214,31 @@ function FormSubmission() {
                         <CheckCircle2 className="h-4 w-4" />
                         {success}
                     </div>
+
                     <div className="mt-2 flex flex-wrap gap-2">
                         <Button asChild size="sm" variant="outline">
-                            <Link to="/forms">Go to Forms</Link>
+                            <Link to="/forms">My Submissions</Link>
                         </Button>
+
+                        {submittedFormId && (
+                            <Button asChild size="sm" variant="outline">
+                                <Link to={`/forms/${submittedFormId}`}>View This Submission</Link>
+                            </Button>
+                        )}
+
                         <Button asChild size="sm">
                             <Link to="/public-templates">Browse Templates</Link>
                         </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* Error inline (submit errors) */}
+            {error && (
+                <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200">
+                    <div className="flex items-center gap-2 font-medium">
+                        <AlertTriangle className="h-4 w-4" />
+                        {error}
                     </div>
                 </div>
             )}
@@ -221,7 +252,8 @@ function FormSubmission() {
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-5">
                         {questions.map((q, idx) => {
-                            const value = answers[q.id] ?? (q.question_type === "checkbox" ? "false" : "");
+                            const value =
+                                answers[q.id] ?? (q.question_type === "checkbox" ? "false" : "");
 
                             return (
                                 <div key={q.id} className="space-y-2">
@@ -267,7 +299,7 @@ function FormSubmission() {
                                                 className="h-4 w-4"
                                                 checked={value === "true"}
                                                 onChange={(e) =>
-                                                    handleChange(q.id, q.question_type, e.target.value, e.target.checked)
+                                                    handleChange(q.id, q.question_type, null, e.target.checked)
                                                 }
                                             />
                                             <div className="text-sm text-zinc-700 dark:text-zinc-300">

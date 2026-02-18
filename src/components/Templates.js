@@ -652,7 +652,7 @@ function Templates() {
                                             <td className="px-4 py-3">
                                                 <div className="flex justify-end gap-2">
                                                     <Button asChild variant="outline" size="sm" className="gap-2">
-                                                        <Link to={`/forms/${form.id}`}>
+                                                        <Link to={`/forms/${form.id}`} state={{ from: `/template/${selectedTemplate.id}` }}>
                                                             View <ArrowRight className="h-4 w-4" />
                                                         </Link>
                                                     </Button>

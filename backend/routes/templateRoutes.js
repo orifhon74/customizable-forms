@@ -1,5 +1,4 @@
 // routes/templateRoutes.js
-
 const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
@@ -8,7 +7,6 @@ const authenticate = require('../middleware/authenticate');
 const sequelize = require('../db');
 const authenticateOptional = require('../middleware/authenticateOptional');
 
-// Import your models
 const {
     Template,
     Form,
@@ -20,37 +18,9 @@ const {
     Question,
 } = require('../models');
 
-const topicMapping = {
-    Other: 1,
-    Quiz: 2,
-    Feedback: 3,
-    Education: 4,
-    Survey: 5,
-    Job: 6,
-    Health: 7,
-    Research: 8,
-    Finance: 9,
-    Entertainment: 10,
-};
-
-function mapTopicId(topic_id) {
-    // If already a number, use it directly (common if frontend sends numeric)
-    if (typeof topic_id === 'number') return topic_id;
-    if (typeof topic_id === 'string' && /^\d+$/.test(topic_id)) return Number(topic_id);
-
-    // Otherwise map from string topic name
-    return topicMapping[topic_id] || 1;
-}
-
-/**
- * -----------------------------------
- * GET /api/templates/search
- * -----------------------------------
- * Privacy fix:
- * - Guests: only public templates
- * - Logged-in users: public + their own templates
- * - Admin: everything
- */
+// -----------------------------------
+// GET /api/templates/search
+// -----------------------------------
 router.get('/search', authenticateOptional, async (req, res) => {
     const { query, tag } = req.query;
 
@@ -58,14 +28,12 @@ router.get('/search', authenticateOptional, async (req, res) => {
         const whereClause = {};
         const includeClause = [];
 
-        // Access control
         if (!req.user) {
             whereClause.access_type = 'public';
         } else if (req.user.role !== 'admin') {
             whereClause[Op.or] = [{ access_type: 'public' }, { user_id: req.user.id }];
         }
 
-        // Query-based search for title or description
         if (query) {
             whereClause[Op.and] = whereClause[Op.and] || [];
             whereClause[Op.and].push({
@@ -76,7 +44,6 @@ router.get('/search', authenticateOptional, async (req, res) => {
             });
         }
 
-        // Tag-based search (NOTE: currently expects tag = Tag.id)
         if (tag) {
             includeClause.push({
                 model: Tag,
@@ -98,12 +65,9 @@ router.get('/search', authenticateOptional, async (req, res) => {
     }
 });
 
-/**
- * -----------------------------------
- * GET /api/templates/latest
- * -----------------------------------
- * - No auth required, fetches the latest 6 public templates
- */
+// -----------------------------------
+// GET /api/templates/latest
+// -----------------------------------
 router.get('/latest', async (req, res) => {
     try {
         const templates = await Template.findAll({
@@ -122,7 +86,7 @@ router.get('/latest', async (req, res) => {
                 'description',
                 'image_url',
                 'user_id',
-                'allow_form_editing',
+                'allow_editing', // ✅ include
                 [sequelize.fn('COUNT', sequelize.col('Likes.id')), 'likeCount'],
             ],
             group: ['Template.id', 'Tags.id', 'User.id'],
@@ -135,12 +99,9 @@ router.get('/latest', async (req, res) => {
     }
 });
 
-/**
- * -----------------------------------
- * GET /api/templates/top
- * -----------------------------------
- * - Fetch top 5 most popular public templates
- */
+// -----------------------------------
+// GET /api/templates/top
+// -----------------------------------
 router.get('/top', async (req, res) => {
     try {
         const templates = await Template.findAll({
@@ -155,7 +116,7 @@ router.get('/top', async (req, res) => {
                 'description',
                 'image_url',
                 'user_id',
-                'allow_form_editing',
+                'allow_editing', // ✅ include
                 [sequelize.fn('COUNT', sequelize.col('Forms.id')), 'forms_count'],
                 [sequelize.fn('COUNT', sequelize.col('Likes.id')), 'likeCount'],
             ],
@@ -172,12 +133,9 @@ router.get('/top', async (req, res) => {
     }
 });
 
-/**
- * -----------------------------------
- * GET /api/templates/public
- * -----------------------------------
- * - Returns all public templates
- */
+// -----------------------------------
+// GET /api/templates/public
+// -----------------------------------
 router.get('/public', async (req, res) => {
     try {
         const templates = await Template.findAll({
@@ -193,7 +151,7 @@ router.get('/public', async (req, res) => {
                 'description',
                 'image_url',
                 'user_id',
-                'allow_form_editing',
+                'allow_editing', // ✅ include
                 [sequelize.fn('COUNT', sequelize.col('Likes.id')), 'likeCount'],
             ],
             group: ['Template.id', 'Tags.id', 'User.id'],
@@ -206,12 +164,9 @@ router.get('/public', async (req, res) => {
     }
 });
 
-/**
- * -----------------------------------
- * GET /api/templates/:id
- * -----------------------------------
- * - Fetch one template (plus tags, comments, likes, questions)
- */
+// -----------------------------------
+// GET /api/templates/:id
+// -----------------------------------
 router.get('/:id', authenticateOptional, async (req, res) => {
     try {
         const templateId = req.params.id;
@@ -225,11 +180,8 @@ router.get('/:id', authenticateOptional, async (req, res) => {
             ],
         });
 
-        if (!template) {
-            return res.status(404).json({ error: 'Template not found' });
-        }
+        if (!template) return res.status(404).json({ error: 'Template not found' });
 
-        // If template is private, only the owner or admin can see it
         if (
             template.access_type !== 'public' &&
             req.user?.id !== template.user_id &&
@@ -238,12 +190,12 @@ router.get('/:id', authenticateOptional, async (req, res) => {
             return res.status(403).json({ error: 'Access denied' });
         }
 
-        // Count likes
         const likeCount = template.Likes?.length || 0;
-
-        // Convert to JSON and add likeCount
         const data = template.toJSON();
         data.likeCount = likeCount;
+
+        // ✅ ensure allow_editing is present in response
+        if (data.allow_editing === undefined) data.allow_editing = template.allow_editing;
 
         res.json(data);
     } catch (err) {
@@ -252,14 +204,9 @@ router.get('/:id', authenticateOptional, async (req, res) => {
     }
 });
 
-/**
- * -----------------------------------
- * GET /api/templates
- * Auth required
- * -----------------------------------
- * - If admin, get all
- * - Otherwise, get user-owned + public
- */
+// -----------------------------------
+// GET /api/templates  (auth required)
+// -----------------------------------
 router.get('/', authenticate, async (req, res) => {
     try {
         let templates;
@@ -279,15 +226,9 @@ router.get('/', authenticate, async (req, res) => {
     }
 });
 
-/**
- * -----------------------------------
- * POST /api/templates
- * Auth required
- * -----------------------------------
- * - Create a template
- * - Create questions array
- * - Associate tags
- */
+// -----------------------------------
+// POST /api/templates
+// -----------------------------------
 router.post('/', authenticate, async (req, res) => {
     try {
         const {
@@ -298,16 +239,27 @@ router.post('/', authenticate, async (req, res) => {
             image_url,
             tags = [],
             questions = [],
-            allow_form_editing, // NEW
+            allow_editing = false, // ✅ NEW
         } = req.body;
 
         if (!title || !topic_id) {
             return res.status(400).json({ error: 'Title and topic are required' });
         }
 
-        const mappedTopicId = mapTopicId(topic_id);
+        const topicMapping = {
+            Other: 1,
+            Quiz: 2,
+            Feedback: 3,
+            Education: 4,
+            Survey: 5,
+            Job: 6,
+            Health: 7,
+            Research: 8,
+            Finance: 9,
+            Entertainment: 10,
+        };
+        const mappedTopicId = topicMapping[topic_id] || 1;
 
-        // 1) Create the template
         const template = await Template.create({
             title,
             description: description || null,
@@ -315,10 +267,9 @@ router.post('/', authenticate, async (req, res) => {
             access_type: access_type || 'public',
             topic_id: mappedTopicId,
             image_url: image_url || null,
-            allow_form_editing: Boolean(allow_form_editing), // NEW
+            allow_editing: Boolean(allow_editing), // ✅ NEW
         });
 
-        // 2) Create questions
         if (Array.isArray(questions)) {
             for (const q of questions) {
                 await Question.create({
@@ -329,7 +280,6 @@ router.post('/', authenticate, async (req, res) => {
             }
         }
 
-        // 3) Tags
         if (Array.isArray(tags)) {
             for (const tagName of tags) {
                 const [tag] = await Tag.findOrCreate({ where: { name: tagName } });
@@ -337,25 +287,16 @@ router.post('/', authenticate, async (req, res) => {
             }
         }
 
-        return res.status(201).json({
-            message: 'Template created successfully',
-            template,
-        });
+        return res.status(201).json({ message: 'Template created successfully', template });
     } catch (err) {
         console.error('Error creating template:', err.message);
         return res.status(500).json({ error: 'Failed to create template' });
     }
 });
 
-/**
- * -----------------------------------
- * PUT /api/templates/:id
- * Auth required
- * -----------------------------------
- * - Update template fields
- * - Replace questions
- * - Update tags
- */
+// -----------------------------------
+// PUT /api/templates/:id
+// -----------------------------------
 router.put('/:id', authenticate, async (req, res) => {
     try {
         const { id } = req.params;
@@ -367,35 +308,41 @@ router.put('/:id', authenticate, async (req, res) => {
             image_url,
             tags = [],
             questions = [],
-            allow_form_editing, // NEW
+            allow_editing, // ✅ NEW
         } = req.body;
 
         const template = await Template.findByPk(id, { include: [Tag] });
-        if (!template) {
-            return res.status(404).json({ error: 'Template not found' });
-        }
+        if (!template) return res.status(404).json({ error: 'Template not found' });
 
-        // Ownership or admin check
         if (template.user_id !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({ error: 'Unauthorized to update' });
         }
 
-        const mappedTopicId = topic_id !== undefined ? mapTopicId(topic_id) : template.topic_id;
+        const topicMapping = {
+            Other: 1,
+            Quiz: 2,
+            Feedback: 3,
+            Education: 4,
+            Survey: 5,
+            Job: 6,
+            Health: 7,
+            Research: 8,
+            Finance: 9,
+            Entertainment: 10,
+        };
+        const mappedTopicId = topicMapping[topic_id] || 1;
 
-        // 1) Update the template fields
         await template.update({
             title: title ?? template.title,
             description: description ?? template.description,
             access_type: access_type ?? template.access_type,
             topic_id: mappedTopicId,
             image_url: image_url ?? template.image_url,
-            // Only update if explicitly provided, otherwise preserve existing
-            ...(allow_form_editing !== undefined ? { allow_form_editing: Boolean(allow_form_editing) } : {}),
+            // ✅ only update if provided, else keep existing
+            allow_editing: allow_editing === undefined ? template.allow_editing : Boolean(allow_editing),
         });
 
-        // 2) Replace questions
         await Question.destroy({ where: { template_id: template.id } });
-
         if (Array.isArray(questions)) {
             for (const q of questions) {
                 await Question.create({
@@ -406,7 +353,6 @@ router.put('/:id', authenticate, async (req, res) => {
             }
         }
 
-        // 3) Update tags
         if (Array.isArray(tags)) {
             const tagInstances = [];
             for (const tagName of tags) {
@@ -416,31 +362,23 @@ router.put('/:id', authenticate, async (req, res) => {
             await template.setTags(tagInstances);
         }
 
-        // 4) Reload updated template
         const updatedTemplate = await Template.findByPk(id, { include: [Tag] });
-        return res.json({
-            message: 'Template updated successfully',
-            template: updatedTemplate,
-        });
+        return res.json({ message: 'Template updated successfully', template: updatedTemplate });
     } catch (err) {
         console.error('Error updating template:', err);
         return res.status(500).json({ error: 'Failed to update template' });
     }
 });
 
-/**
- * -----------------------------------
- * DELETE /api/templates/:id
- * Auth required: only admin or owner
- * -----------------------------------
- */
+// -----------------------------------
+// DELETE /api/templates/:id
+// -----------------------------------
 router.delete('/:id', authenticate, async (req, res) => {
     try {
         const { id } = req.params;
         const template = await Template.findByPk(id);
-        if (!template) {
-            return res.status(404).json({ error: 'Template not found' });
-        }
+        if (!template) return res.status(404).json({ error: 'Template not found' });
+
         if (template.user_id !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({ error: 'Unauthorized to delete' });
         }
@@ -453,18 +391,14 @@ router.delete('/:id', authenticate, async (req, res) => {
     }
 });
 
-/**
- * -----------------------------------
- * GET /api/templates/:id/forms
- * Auth required: owner or admin
- * -----------------------------------
- */
+// -----------------------------------
+// GET /api/templates/:id/forms
+// -----------------------------------
 router.get('/:id/forms', authenticate, async (req, res) => {
     try {
         const template = await Template.findByPk(req.params.id);
-        if (!template) {
-            return res.status(404).json({ error: 'Template not found' });
-        }
+        if (!template) return res.status(404).json({ error: 'Template not found' });
+
         if (template.user_id !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({ error: 'Unauthorized' });
         }

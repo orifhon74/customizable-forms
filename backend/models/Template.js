@@ -45,7 +45,7 @@ const Template = sequelize.define(
          * NEW: whether the template owner allows submitters to edit their submissions.
          * default false keeps things “form-submissions-are-final” unless explicitly enabled.
          */
-        allow_form_editing: {
+        allow_editing: {
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: false,

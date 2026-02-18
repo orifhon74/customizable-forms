@@ -1,6 +1,6 @@
 // src/components/FormDetails.js
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link, useLocation } from "react-router-dom";
 
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
@@ -26,14 +26,28 @@ function normalizeAnswer(questionType, answerValue) {
     return String(answerValue);
 }
 
+function toBool(v) {
+    // Handles: true/false, 1/0, "true"/"false", "1"/"0"
+    if (v === true) return true;
+    if (v === false) return false;
+    if (v === 1 || v === "1") return true;
+    if (v === 0 || v === "0") return false;
+    if (typeof v === "string") return v.toLowerCase() === "true";
+    return false;
+}
+
 function FormDetails() {
     const { formId } = useParams();
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    // “exact page you came from”
+    const backTo = location.state?.from || "/forms";
+
     const [form, setForm] = useState(null);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(true);
     const [deleting, setDeleting] = useState(false);
-
-    const navigate = useNavigate();
 
     const user = useMemo(() => {
         try {
@@ -42,8 +56,8 @@ function FormDetails() {
             return null;
         }
     }, []);
-    const isAdmin = user?.role === "admin";
 
+    const isAdmin = user?.role === "admin";
     const API_URL = process.env.REACT_APP_API_URL;
 
     useEffect(() => {
@@ -60,7 +74,12 @@ function FormDetails() {
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Failed to fetch form (HTTP ${response.status})`);
+                    let msg = `Failed to fetch form (HTTP ${response.status})`;
+                    try {
+                        const data = await response.json();
+                        msg = data?.error || data?.message || msg;
+                    } catch {}
+                    throw new Error(msg);
                 }
 
                 const data = await response.json();
@@ -72,16 +91,31 @@ function FormDetails() {
             }
         };
 
-        fetchFormDetails();
+        if (API_URL) fetchFormDetails();
     }, [formId, API_URL]);
 
-    const canManage = useMemo(() => {
-        const ownerId = form?.Template?.user_id;
-        return Boolean(isAdmin || (user?.id && ownerId && user.id === ownerId));
-    }, [form, isAdmin, user]);
+    const templateOwnerId = form?.Template?.user_id;
+    const submitterId = form?.user_id;
+
+    const isTemplateOwner = Boolean(user?.id && templateOwnerId && user.id === templateOwnerId);
+    const isSubmitter = Boolean(user?.id && submitterId && user.id === submitterId);
+
+    // Template toggle (allow editing)
+    const allowEditing = toBool(form?.Template?.allow_editing);
+
+    // Who can edit?
+    // - Admin: always
+    // - Submitter: only if template allows editing
+    const canEdit = Boolean(isAdmin || (isSubmitter && allowEditing));
+
+    // Who can delete?
+    // - Admin: always
+    // - Template owner: yes
+    const canDelete = Boolean(isAdmin || isTemplateOwner);
 
     const handleEditForm = () => {
-        navigate(`/edit-form/${formId}`);
+        // Preserve "from" so Edit page can go back to same place too (if you want)
+        navigate(`/edit-form/${formId}`, { state: { from: backTo } });
     };
 
     const handleDeleteForm = async () => {
@@ -103,8 +137,17 @@ function FormDetails() {
                 headers: { Authorization: `Bearer ${token}` },
             });
 
-            if (!response.ok) throw new Error("Failed to delete form");
-            navigate("/forms");
+            if (!response.ok) {
+                let msg = "Failed to delete form";
+                try {
+                    const data = await response.json();
+                    msg = data?.error || data?.message || msg;
+                } catch {}
+                throw new Error(msg);
+            }
+
+            // Go back to the exact page you came from
+            navigate(backTo);
         } catch (err) {
             setError(err.message || "Failed to delete the form.");
         } finally {
@@ -118,7 +161,7 @@ function FormDetails() {
             <div className="mx-auto w-full max-w-6xl px-4 py-8">
                 <div className="mb-4">
                     <Button asChild variant="outline" size="sm" className="gap-2">
-                        <Link to="/forms">
+                        <Link to={backTo}>
                             <ArrowLeft className="h-4 w-4" />
                             Back
                         </Link>
@@ -183,35 +226,37 @@ function FormDetails() {
                         <h1 className="text-2xl font-semibold tracking-tight">Form Details</h1>
                         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                             Submission #{form.id}
+                            {isSubmitter ? " (your submission)" : ""}
                         </p>
                     </div>
                 </div>
 
                 <div className="flex gap-2">
                     <Button asChild variant="outline" size="sm" className="gap-2">
-                        <Link to="/forms">
+                        <Link to={backTo}>
                             <ArrowLeft className="h-4 w-4" />
                             Back
                         </Link>
                     </Button>
 
-                    {canManage && (
-                        <>
-                            <Button variant="outline" size="sm" onClick={handleEditForm} className="gap-2">
-                                <Pencil className="h-4 w-4" />
-                                Edit
-                            </Button>
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={handleDeleteForm}
-                                className="gap-2"
-                                disabled={deleting}
-                            >
-                                <Trash2 className="h-4 w-4" />
-                                {deleting ? "Deleting..." : "Delete"}
-                            </Button>
-                        </>
+                    {canEdit && (
+                        <Button variant="outline" size="sm" onClick={handleEditForm} className="gap-2">
+                            <Pencil className="h-4 w-4" />
+                            Edit
+                        </Button>
+                    )}
+
+                    {canDelete && (
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleDeleteForm}
+                            className="gap-2"
+                            disabled={deleting}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                            {deleting ? "Deleting..." : "Delete"}
+                        </Button>
                     )}
                 </div>
             </div>
@@ -225,6 +270,9 @@ function FormDetails() {
                     </div>
                     <div className="mt-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                         {form.Template?.title || "N/A"}
+                    </div>
+                    <div className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
+                        Editing allowed: <span className="font-medium">{allowEditing ? "Yes" : "No"}</span>
                     </div>
                 </Card>
 

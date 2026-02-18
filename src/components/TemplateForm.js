@@ -22,6 +22,7 @@ import {
     Lock,
     Globe,
     HelpCircle,
+    Pencil,
 } from "lucide-react";
 
 function TemplateForm() {
@@ -38,6 +39,9 @@ function TemplateForm() {
     const [accessType, setAccessType] = useState("public");
     const [topic, setTopic] = useState("Other");
     const [imageUrl, setImageUrl] = useState("");
+
+    // ✅ NEW: allow submission editing toggle
+    const [allowEditing, setAllowEditing] = useState(false);
 
     // Questions: [{ question_text, question_type }]
     const [questions, setQuestions] = useState([]);
@@ -108,8 +112,11 @@ function TemplateForm() {
                 setTitle(data.title || "");
                 setDescription(data.description || "");
                 setAccessType(data.access_type || "public");
-                setTopic(data.topic_id || "Other"); // you store string in UI; backend maps it
+                setTopic(data.topic_id || "Other");
                 setImageUrl(data.image_url || "");
+
+                // ✅ NEW: hydrate allow_editing
+                setAllowEditing(Boolean(data.allow_editing));
 
                 const normalizedTags = Array.isArray(data.tags)
                     ? data.tags
@@ -146,8 +153,6 @@ function TemplateForm() {
         const next = (raw || "").trim();
         if (!next) return;
 
-        // normalize (optional): lower-case tags to avoid duplicates
-        // const norm = next.toLowerCase();
         const norm = next;
 
         setTags((prev) => {
@@ -232,6 +237,8 @@ function TemplateForm() {
             image_url: imageUrl,
             tags,
             questions,
+            // ✅ NEW:
+            allow_editing: allowEditing,
         };
 
         try {
@@ -368,11 +375,7 @@ function TemplateForm() {
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div className="space-y-2">
                                         <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                            {accessType === "public" ? (
-                                                <Globe className="h-4 w-4" />
-                                            ) : (
-                                                <Lock className="h-4 w-4" />
-                                            )}
+                                            {accessType === "public" ? <Globe className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                                             Access Type
                                         </label>
 
@@ -408,6 +411,27 @@ function TemplateForm() {
                                         </select>
                                     </div>
                                 </div>
+
+                                {/* ✅ NEW: Allow editing toggle */}
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                        <Pencil className="h-4 w-4" />
+                                        Allow submitters to edit submissions
+                                    </label>
+
+                                    <select
+                                        value={allowEditing ? "yes" : "no"}
+                                        onChange={(e) => setAllowEditing(e.target.value === "yes")}
+                                        className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-800 dark:bg-zinc-950 dark:ring-zinc-700"
+                                    >
+                                        <option value="no">No (default)</option>
+                                        <option value="yes">Yes</option>
+                                    </select>
+
+                                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                                        If enabled, the person who submitted the form can later edit their answers.
+                                    </p>
+                                </div>
                             </div>
                         </Card>
 
@@ -421,12 +445,7 @@ function TemplateForm() {
                                     </p>
                                 </div>
 
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={handleAddQuestion}
-                                    className="gap-2"
-                                >
+                                <Button type="button" variant="outline" onClick={handleAddQuestion} className="gap-2">
                                     <Plus className="h-4 w-4" />
                                     Add
                                 </Button>
@@ -468,7 +487,7 @@ function TemplateForm() {
                                                     <Input
                                                         value={q.question_text || ""}
                                                         onChange={(e) => handleQuestionChange(i, "question_text", e.target.value)}
-                                                        placeholder={`E.g. What is your name?`}
+                                                        placeholder="E.g. What is your name?"
                                                     />
                                                 </div>
 
@@ -533,12 +552,7 @@ function TemplateForm() {
                                             className="h-40 w-full rounded-md object-cover"
                                         />
                                         <div className="mt-2 flex justify-end">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setImageUrl("")}
-                                            >
+                                            <Button type="button" variant="outline" size="sm" onClick={() => setImageUrl("")}>
                                                 Remove image
                                             </Button>
                                         </div>
@@ -601,9 +615,7 @@ function TemplateForm() {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-                                    No tags yet.
-                                </div>
+                                <div className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">No tags yet.</div>
                             )}
                         </Card>
 
@@ -621,7 +633,7 @@ function TemplateForm() {
                         </Card>
                     </div>
 
-                    {/* Mobile sticky save (optional feel) */}
+                    {/* Mobile sticky save */}
                     <div className="lg:hidden">
                         <Button className="mt-2 w-full" disabled={saving || uploading}>
                             {saving ? (
