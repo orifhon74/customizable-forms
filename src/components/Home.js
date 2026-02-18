@@ -1,9 +1,9 @@
-import React, {useContext, useEffect, useState} from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Card, Button, Badge, Alert } from 'react-bootstrap';
-import { ThemeContext } from '../context/ThemeContext';
-import {LanguageContext} from "../context/LanguageContext";
-
+// src/components/Home.js
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import TemplateCard from "./TemplateCard";
+import { Button } from "./ui/button";
+import { Search, ArrowRight } from "lucide-react";
 
 function Home() {
     const [latestTemplates, setLatestTemplates] = useState([]);
@@ -11,41 +11,37 @@ function Home() {
     const [tags, setTags] = useState([]);
     const [error, setError] = useState(null);
 
-    const [templates, setTemplates] = useState([]);
-    const isAuthenticated = !!localStorage.getItem('token');
-
     const navigate = useNavigate();
     const API_URL = process.env.REACT_APP_API_URL;
 
-    const { theme } = useContext(ThemeContext);
-    const { t } = useContext(LanguageContext);
+    const isAuthenticated = useMemo(() => !!localStorage.getItem("token"), []);
 
     useEffect(() => {
         const fetchHomeData = async () => {
             try {
-                // Fetch latest templates
+                setError(null);
+
                 let resp = await fetch(`${API_URL}/api/templates/latest`);
-                if (!resp.ok) throw new Error('Failed to fetch latest templates');
+                if (!resp.ok) throw new Error("Failed to fetch latest templates");
                 let data = await resp.json();
-                setLatestTemplates(data);
+                setLatestTemplates(Array.isArray(data) ? data : []);
 
-                // Fetch top 5 templates
                 resp = await fetch(`${API_URL}/api/templates/top`);
-                if (!resp.ok) throw new Error('Failed to fetch top templates');
+                if (!resp.ok) throw new Error("Failed to fetch top templates");
                 data = await resp.json();
-                setTopTemplates(data);
+                setTopTemplates(Array.isArray(data) ? data : []);
 
-                // Fetch tag cloud
                 resp = await fetch(`${API_URL}/api/tags/cloud`);
-                if (!resp.ok) throw new Error('Failed to fetch tag cloud');
+                if (!resp.ok) throw new Error("Failed to fetch tag cloud");
                 data = await resp.json();
-                setTags(data);
+                setTags(Array.isArray(data) ? data : []);
             } catch (err) {
-                setError(err.message);
+                setError(err?.message || "Something went wrong");
             }
         };
-        fetchHomeData();
-    }, []);
+
+        if (API_URL) fetchHomeData();
+    }, [API_URL]);
 
     const handleTagClick = (tagId) => {
         navigate(`/search-results?q=${tagId}&type=tag`);
@@ -53,268 +49,186 @@ function Home() {
 
     const handleLike = async (templateId, isFromLatest) => {
         if (!isAuthenticated) {
-            setError('You must be logged in to like a template');
+            setError("You must be logged in to like a template");
             return;
         }
 
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem("token");
         try {
             const response = await fetch(`${API_URL}/api/likes`, {
-                method: 'POST',
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json',
+                    "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({ template_id: templateId }),
             });
-            if (!response.ok) throw new Error('Failed to like template');
 
-            // Update the likes count in the state
-            if (isFromLatest) {
-                setLatestTemplates((prevTemplates) =>
-                    prevTemplates.map((template) =>
-                        template.id === templateId
-                            ? { ...template, likeCount: (template.likeCount || 0) + 1 }
-                            : template
-                    )
+            if (!response.ok) throw new Error("Failed to like template");
+
+            const bumpLike = (arr) =>
+                arr.map((t) =>
+                    t.id === templateId ? { ...t, likeCount: (t.likeCount || 0) + 1 } : t
                 );
-            } else {
-                setTopTemplates((prevTemplates) =>
-                    prevTemplates.map((template) =>
-                        template.id === templateId
-                            ? { ...template, likeCount: (template.likeCount || 0) + 1 }
-                            : template
-                    )
-                );
-            }
+
+            if (isFromLatest) setLatestTemplates((prev) => bumpLike(prev));
+            else setTopTemplates((prev) => bumpLike(prev));
         } catch (err) {
-            setError(err.message);
+            setError(err?.message || "Failed to like template");
         }
     };
 
     return (
-        <Container className="my-4">
-            <h1 className="text-center mb-5">{t('welcome')}</h1>
-            {error && <Alert variant="danger">{error}</Alert>}
+        <div className="space-y-10">
+            {/* Hero */}
+            <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h1 className="text-2xl font-semibold tracking-tight">Welcome</h1>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                            Browse templates, explore tags, and build your own forms.
+                        </p>
+
+                        {/* Search hint row (replaces big search input) */}
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                            <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
+                                <Search className="h-4 w-4 text-zinc-500" />
+                                Use the search bar up top to find templates fast.
+                            </div>
+
+                            <Button
+                                variant="outline"
+                                className="gap-2"
+                                onClick={() => navigate("/public-templates")}
+                            >
+                                Browse public templates <ArrowRight className="h-4 w-4" />
+                            </Button>
+
+                            {isAuthenticated && (
+                                <Button className="gap-2" onClick={() => navigate("/templates")}>
+                                    Your templates <ArrowRight className="h-4 w-4" />
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Right side: compact highlight panel so it doesn't look empty */}
+                    <div className="w-full md:w-[420px]">
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-200">
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <p className="font-medium">Quick tips</p>
+                                    <p className="mt-1 text-zinc-600 dark:text-zinc-300">
+                                        Try keywords like “survey”, “feedback”, “quiz”, or click a tag below.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                <span className="rounded-full bg-white px-3 py-1 text-xs text-zinc-700 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-200 dark:ring-zinc-800">
+                  survey
+                </span>
+                                <span className="rounded-full bg-white px-3 py-1 text-xs text-zinc-700 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-200 dark:ring-zinc-800">
+                  feedback
+                </span>
+                                <span className="rounded-full bg-white px-3 py-1 text-xs text-zinc-700 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-200 dark:ring-zinc-800">
+                  education
+                </span>
+                                <span className="rounded-full bg-white px-3 py-1 text-xs text-zinc-700 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-200 dark:ring-zinc-800">
+                  job
+                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {error && (
+                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200">
+                        {error}
+                    </div>
+                )}
+            </section>
 
             {/* Latest Templates */}
-            <section className="mb-5">
-                <h2 className="mb-4 text-center">{t('latestTemplates')}</h2>
-                {latestTemplates.length === 0 ? (
-                    <p className="text-center">No latest templates available.</p>
-                ) : (
-                    <Row xs={1} md={2} lg={3} className="g-4">
-                        {latestTemplates.map((template) => (
-                            <Col key={template.id}>
-                                <Card
-                                    className={`shadow-sm ${
-                                        theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark'
-                                    }`}
-                                    style={{ height: '100%' }}
-                                >
-                                    {template.image_url ? (
-                                        <Card.Img
-                                            variant="top"
-                                            src={template.image_url}
-                                            alt={template.title}
-                                            style={{ height: '150px', objectFit: 'cover' }}
-                                        />
-                                    ) : (
-                                        <div
-                                            style={{
-                                                height: '150px',
-                                                backgroundColor: theme === 'dark' ? '#343a40' : '#f8f9fa',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                color: '#6c757d',
-                                                fontStyle: 'italic',
-                                            }}
-                                        >
-                                            No Image
-                                        </div>
-                                    )}
-                                    <Card.Body style={{ display: 'flex', flexDirection: 'column' }}>
-                                        <Card.Title>{template.title}</Card.Title>
-                                        <Card.Text className="text-truncate" style={{ maxHeight: '40px' }}>
-                                            {template.description}
-                                        </Card.Text>
-                                        <Card.Text>
-                                            <strong>Author:</strong> {template.User?.username ?? 'Unknown'}
-                                        </Card.Text>
-                                        <Card.Text>
-                                            <strong>Likes:</strong> {template.likeCount || 0}
-                                        </Card.Text>
-                                        <div className="mt-auto d-flex justify-content-between align-items-center">
-                                            <Button
-                                                onClick={() => handleLike(template.id, true)}
-                                                style={{
-                                                    backgroundColor: '#007bff',
-                                                    border: 'none',
-                                                    borderRadius: '50%',
-                                                    width: '40px',
-                                                    height: '40px',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                }}
-                                                title="Like this template"
-                                            >
-                                                <span
-                                                    role="img"
-                                                    aria-label="thumbs up"
-                                                    style={{ fontSize: '1.2rem' }}
-                                                >
-                                                    👍
-                                                </span>
-                                            </Button>
-                                            <Button
-                                                variant="outline-secondary"
-                                                onClick={() => navigate(`/templates/${template.id}`)}
-                                            >
-                                                {t('viewDetails')}
-                                            </Button>
-                                        </div>
+            <section className="space-y-4">
+                <div className="flex items-end justify-between">
+                    <h2 className="text-lg font-semibold">Latest templates</h2>
+                </div>
 
-                                        {isAuthenticated && (
-                                            <Link to={`/submit-form/${template.id}`}>
-                                                <Button
-                                                    variant={theme === 'dark' ? 'success' : 'success'}
-                                                    className="w-100"
-                                                    style={{ marginTop: '10px' }}
-                                                    type={"button"}
-                                                    class="btn btn-warning"
-                                                >
-                                                    Fill Out
-                                                </Button>
-                                            </Link>
-                                        )}
-                                    </Card.Body>
-                                </Card>
-                            </Col>
+                {latestTemplates.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
+                        No latest templates available.
+                    </div>
+                ) : (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {latestTemplates.map((template) => (
+                            <TemplateCard
+                                key={template.id}
+                                template={template}
+                                showAuthor
+                                isAuthenticated={isAuthenticated}
+                                onLike={() => handleLike(template.id, true)}
+                                viewHref={`/templates/${template.id}`}
+                                fillHref={`/submit-form/${template.id}`}
+                            />
                         ))}
-                    </Row>
+                    </div>
                 )}
             </section>
 
             {/* Top Templates */}
-            <section className="mb-5">
-                <h2 className="mb-4 text-center">{t('top5Templates')}</h2>
-                {topTemplates.length === 0 ? (
-                    <p className="text-center">No top templates available.</p>
-                ) : (
-                    <Row xs={1} md={2} lg={3} className="g-4">
-                        {topTemplates.map((template) => (
-                            <Col key={template.id}>
-                                <Card
-                                    className={`shadow-sm ${
-                                        theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark'
-                                    }`}
-                                    style={{ height: '100%' }}
-                                >
-                                    {template.image_url ? (
-                                        <Card.Img
-                                            variant="top"
-                                            src={template.image_url}
-                                            alt={template.title}
-                                            style={{ height: '150px', objectFit: 'cover' }}
-                                        />
-                                    ) : (
-                                        <div
-                                            style={{
-                                                height: '150px',
-                                                backgroundColor: theme === 'dark' ? '#343a40' : '#f8f9fa',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                color: '#6c757d',
-                                                fontStyle: 'italic',
-                                            }}
-                                        >
-                                            No Image
-                                        </div>
-                                    )}
-                                    <Card.Body style={{ display: 'flex', flexDirection: 'column' }}>
-                                        <Card.Title>{template.title}</Card.Title>
-                                        <Card.Text className="text-truncate" style={{ maxHeight: '40px' }}>
-                                            {template.description}
-                                        </Card.Text>
-                                        <Card.Text>
-                                            <strong>Forms Filled:</strong> {template.forms_count}
-                                        </Card.Text>
-                                        <Card.Text>
-                                            <strong>Likes:</strong> {template.likeCount || 0}
-                                        </Card.Text>
-                                        <div className="mt-auto d-flex justify-content-between align-items-center">
-                                            {/*
-                                                Same thumbs-up bubble for the "top templates" section
-                                            */}
-                                            <Button
-                                                onClick={() => handleLike(template.id, false)}
-                                                style={{
-                                                    backgroundColor: '#007bff',
-                                                    border: 'none',
-                                                    borderRadius: '50%',
-                                                    width: '40px',
-                                                    height: '40px',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                }}
-                                                title="Like this template"
-                                            >
-                                                <span
-                                                    role="img"
-                                                    aria-label="thumbs up"
-                                                    style={{ fontSize: '1.2rem' }}
-                                                >
-                                                    👍
-                                                </span>
-                                            </Button>
-                                            <Link to={`/templates/${template.id}`}>
-                                                <Button variant="outline-secondary">{t('viewDetails')}</Button>
-                                            </Link>
-                                        </div>
+            <section className="space-y-4">
+                <div className="flex items-end justify-between">
+                    <h2 className="text-lg font-semibold">Top templates</h2>
+                </div>
 
-                                        {isAuthenticated && (
-                                            <Link to={`/submit-form/${template.id}`}>
-                                                <Button
-                                                    variant={theme === 'dark' ? 'success' : 'success'}
-                                                    className="w-100"
-                                                    style={{ marginTop: '10px' }}
-                                                    type={"button"}
-                                                    class="btn btn-warning"
-                                                >
-                                                    Fill Out
-                                                </Button>
-                                            </Link>
-                                        )}
-                                    </Card.Body>
-                                </Card>
-                            </Col>
+                {topTemplates.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
+                        No top templates available.
+                    </div>
+                ) : (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {topTemplates.map((template) => (
+                            <TemplateCard
+                                key={template.id}
+                                template={template}
+                                showFormsFilled
+                                isAuthenticated={isAuthenticated}
+                                onLike={() => handleLike(template.id, false)}
+                                viewHref={`/templates/${template.id}`}
+                                fillHref={`/submit-form/${template.id}`}
+                            />
                         ))}
-                    </Row>
+                    </div>
                 )}
             </section>
 
             {/* Tag Cloud */}
-            <section className="mb-5">
-                <h2 className="mb-4 text-center">{t('tags')}</h2>
-                <div className="d-flex flex-wrap justify-content-center">
-                    {tags.map((tag) => (
-                        <Badge
-                            key={tag.id}
-                            bg={theme === 'dark' ? 'secondary' : 'primary'}
-                            className="m-1 p-2"
-                            style={{ cursor: 'pointer', fontSize: '1rem' }}
-                            onClick={() => handleTagClick(tag.id)}
-                        >
-                            {tag.name}
-                        </Badge>
-                    ))}
-                </div>
+            <section className="space-y-4">
+                <h2 className="text-lg font-semibold">Tags</h2>
+
+                {tags.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
+                        No tags yet.
+                    </div>
+                ) : (
+                    <div className="flex flex-wrap gap-2">
+                        {tags.map((tag) => (
+                            <button
+                                key={tag.id}
+                                onClick={() => handleTagClick(tag.id)}
+                                className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-sm text-zinc-700 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                                title={`View templates for tag: ${tag.name}`}
+                            >
+                                {tag.name}
+                                <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+                  {tag.count ?? 0}
+                </span>
+                            </button>
+                        ))}
+                    </div>
+                )}
             </section>
-        </Container>
+        </div>
     );
 }
 

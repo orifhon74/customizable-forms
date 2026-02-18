@@ -222,30 +222,100 @@ router.get('/template/:templateId', authenticate, async (req, res) => {
  * PUT /api/forms/:id
  * Auth required: only admin or template owner
  * -----------------------------------
- * - Potentially update a form (though typically form answers are final)
+ * - Updates a form's answers (FormAnswers)
+ * - Does NOT allow changing form.template_id or form.user_id
  */
 router.put('/:id', authenticate, async (req, res) => {
+    const t = await sequelize.transaction();
     try {
         const { id } = req.params;
-        const form = await Form.findByPk(id, { include: [Template] });
+
+        // Expect: { FormAnswers: [{ question_id, answer_value }, ...] }
+        const { FormAnswers } = req.body;
+
+        const form = await Form.findByPk(id, {
+            include: [{ model: Template }],
+            transaction: t,
+        });
+
         if (!form) {
+            await t.rollback();
             return res.status(404).json({ error: 'Form not found' });
         }
 
-        // Check ownership
+        // Ownership check
         if (req.user.role !== 'admin' && req.user.id !== form.Template.user_id) {
+            await t.rollback();
             return res.status(403).json({ error: 'Unauthorized to edit this form' });
         }
 
-        // Possibly you only allow updating certain fields
-        // E.g., you might not want to let them change 'template_id' or 'user_id'
-        // We'll do a direct .update(req.body) for demonstration
-        await form.update(req.body);
+        // Validate payload
+        if (!Array.isArray(FormAnswers)) {
+            await t.rollback();
+            return res.status(400).json({
+                error: 'Invalid payload. Expected "FormAnswers" as an array.',
+            });
+        }
 
-        res.json({ message: 'Form updated successfully', form });
+        // Optional: ensure all questions belong to this template
+        // (prevents editing by injecting random question_ids)
+        const templateQuestions = await Question.findAll({
+            where: { template_id: form.template_id },
+            attributes: ['id', 'question_type'],
+            transaction: t,
+        });
+        const allowedQuestionIds = new Set(templateQuestions.map((q) => q.id));
+
+        for (const fa of FormAnswers) {
+            if (!fa || typeof fa.question_id !== 'number') {
+                await t.rollback();
+                return res.status(400).json({ error: 'Each answer must include a numeric question_id.' });
+            }
+            if (!allowedQuestionIds.has(fa.question_id)) {
+                await t.rollback();
+                return res.status(400).json({
+                    error: `Question ${fa.question_id} does not belong to this template.`,
+                });
+            }
+        }
+
+        // Replace strategy: delete existing answers then insert new ones
+        await FormAnswer.destroy({
+            where: { form_id: form.id },
+            transaction: t,
+        });
+
+        // Insert new answers
+        // Normalize values to strings (your app uses 'true'/'false' for checkbox)
+        const rows = FormAnswers.map((fa) => ({
+            form_id: form.id,
+            question_id: fa.question_id,
+            answer_value: String(fa.answer_value ?? ''),
+        }));
+
+        if (rows.length > 0) {
+            await FormAnswer.bulkCreate(rows, { transaction: t });
+        }
+
+        await t.commit();
+
+        // Return the updated form including answers
+        const updatedForm = await Form.findByPk(id, {
+            include: [
+                { model: Template },
+                { model: User, attributes: ['id', 'username', 'email'] },
+                {
+                    model: FormAnswer,
+                    include: [{ model: Question, attributes: ['id', 'question_text', 'question_type'] }],
+                },
+            ],
+        });
+
+        return res.json({ message: 'Form updated successfully', form: updatedForm });
     } catch (err) {
+        await t.rollback();
         console.error('Error updating form:', err);
-        res.status(500).json({ error: 'Failed to update form' });
+        return res.status(500).json({ error: 'Failed to update form' });
     }
 });
 

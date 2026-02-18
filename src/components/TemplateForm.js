@@ -1,65 +1,164 @@
 // src/components/TemplateForm.js
+import React, { useEffect, useMemo, useState, useContext } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
-import React, { useState, useEffect, useContext } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { storage } from '../firebase'; // Firebase storage
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from "../firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
-import 'bootstrap/dist/css/bootstrap.min.css';
-import {
-    Container,
-    Form,
-    Button,
-    Alert,
-    Row,
-    Col,
-    Badge,
-    InputGroup,
-    Card,
-} from 'react-bootstrap';
 import { LanguageContext } from "../context/LanguageContext";
+
+import { Card } from "./ui/card";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+
+import {
+    ArrowLeft,
+    Image as ImageIcon,
+    Loader2,
+    Plus,
+    Trash2,
+    Tag as TagIcon,
+    Lock,
+    Globe,
+    HelpCircle,
+} from "lucide-react";
 
 function TemplateForm() {
     const location = useLocation();
     const navigate = useNavigate();
     const queryParams = new URLSearchParams(location.search);
 
-    const isEditMode = queryParams.get('edit') === 'true';
-    const templateId = queryParams.get('templateId');
+    const isEditMode = queryParams.get("edit") === "true";
+    const templateId = queryParams.get("templateId");
 
     // Basic fields
-    const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
-    const [accessType, setAccessType] = useState('public');
-    const [topic, setTopic] = useState('Other'); // Default to "Other"
-    const [imageUrl, setImageUrl] = useState('');
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [accessType, setAccessType] = useState("public");
+    const [topic, setTopic] = useState("Other");
+    const [imageUrl, setImageUrl] = useState("");
 
-    /**
-     * questions: an array of objects [{ question_text, question_type }]
-     * Instead of separate arrays for string/multiline/int/checkbox.
-     */
+    // Questions: [{ question_text, question_type }]
     const [questions, setQuestions] = useState([]);
 
     // Tags
     const [tags, setTags] = useState([]);
-    const [tagInput, setTagInput] = useState('');
+    const [tagInput, setTagInput] = useState("");
 
-    // UI State
+    // UI state
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
     const [uploading, setUploading] = useState(false);
+    const [loadingTemplate, setLoadingTemplate] = useState(false);
+    const [saving, setSaving] = useState(false);
 
     const API_URL = process.env.REACT_APP_API_URL;
     const { t } = useContext(LanguageContext);
 
+    const pageTitle = isEditMode ? "Edit Template" : "Create Template";
+
+    const topicOptions = useMemo(
+        () => [
+            "Other",
+            "Quiz",
+            "Feedback",
+            "Education",
+            "Survey",
+            "Job",
+            "Health",
+            "Research",
+            "Finance",
+            "Entertainment",
+        ],
+        []
+    );
+
+    const questionTypeOptions = useMemo(
+        () => [
+            { value: "string", label: "String (single line)" },
+            { value: "multiline", label: "Multiline" },
+            { value: "integer", label: "Integer" },
+            { value: "checkbox", label: "Checkbox" },
+        ],
+        []
+    );
+
+    // -----------------------------
+    // Fetch template when editing
+    // -----------------------------
+    useEffect(() => {
+        if (!(isEditMode && templateId)) return;
+
+        const fetchTemplate = async () => {
+            const token = localStorage.getItem("token");
+            if (!token) return;
+
+            try {
+                setLoadingTemplate(true);
+                setError(null);
+
+                const resp = await fetch(`${API_URL}/api/templates/${templateId}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (!resp.ok) throw new Error("Failed to fetch template for editing");
+
+                const data = await resp.json();
+
+                setTitle(data.title || "");
+                setDescription(data.description || "");
+                setAccessType(data.access_type || "public");
+                setTopic(data.topic_id || "Other"); // you store string in UI; backend maps it
+                setImageUrl(data.image_url || "");
+
+                const normalizedTags = Array.isArray(data.tags)
+                    ? data.tags
+                    : Array.isArray(data.Tags)
+                        ? data.Tags.map((x) => x.name)
+                        : [];
+
+                setTags(normalizedTags);
+
+                if (Array.isArray(data.Questions)) {
+                    setQuestions(
+                        data.Questions.map((q) => ({
+                            question_text: q.question_text,
+                            question_type: q.question_type,
+                        }))
+                    );
+                } else {
+                    setQuestions([]);
+                }
+            } catch (err) {
+                setError(err.message || "Failed to load template");
+            } finally {
+                setLoadingTemplate(false);
+            }
+        };
+
+        fetchTemplate();
+    }, [isEditMode, templateId, API_URL]);
+
     // -----------------------------
     // Tag handlers
     // -----------------------------
+    const addTag = (raw) => {
+        const next = (raw || "").trim();
+        if (!next) return;
+
+        // normalize (optional): lower-case tags to avoid duplicates
+        // const norm = next.toLowerCase();
+        const norm = next;
+
+        setTags((prev) => {
+            if (prev.includes(norm)) return prev;
+            return [...prev, norm];
+        });
+    };
+
     const handleAddTag = () => {
-        if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-            setTags((prev) => [...prev, tagInput.trim()]);
-            setTagInput('');
-        }
+        addTag(tagInput);
+        setTagInput("");
     };
 
     const handleRemoveTag = (tagToRemove) => {
@@ -67,88 +166,10 @@ function TemplateForm() {
     };
 
     // -----------------------------
-    // Fetch if editing
-    // -----------------------------
-    useEffect(() => {
-        if (isEditMode && templateId) {
-            const fetchTemplate = async () => {
-                const token = localStorage.getItem('token');
-                if (!token) return;
-
-                try {
-                    const resp = await fetch(`${API_URL}/api/templates/${templateId}`, {
-                        headers: { Authorization: `Bearer ${token}` },
-                    });
-                    if (!resp.ok) throw new Error('Failed to fetch template for editing');
-
-                    const data = await resp.json();
-
-                    // Fill the states
-                    setTitle(data.title || '');
-                    setDescription(data.description || '');
-                    setAccessType(data.access_type || 'public');
-                    setTopic(data.topic_id || 'Other');
-                    setImageUrl(data.image_url || '');
-
-                    const normalizedTags =
-                        Array.isArray(data.tags) ? data.tags :
-                            Array.isArray(data.Tags) ? data.Tags.map(t => t.name) :
-                                [];
-
-                    setTags(normalizedTags);
-
-                    // If your backend returns an array of questions under data.Questions:
-                    if (data.Questions) {
-                        setQuestions(
-                            data.Questions.map((q) => ({
-                                question_text: q.question_text,
-                                question_type: q.question_type,
-                            }))
-                        );
-                    } else {
-                        setQuestions([]);
-                    }
-                } catch (err) {
-                    setError(err.message);
-                }
-            };
-            fetchTemplate();
-        }
-    }, [isEditMode, templateId, API_URL]);
-
-    // -----------------------------
-    // Image Upload
-    // -----------------------------
-    const handleImageUpload = async (e) => {
-        const file = e.target?.files?.[0];
-        if (!file) {
-            setError('No file selected');
-            return;
-        }
-        setError(null);
-
-        const storageRef = ref(storage, `template-images/${Date.now()}-${file.name}`);
-        try {
-            setUploading(true);
-            const snapshot = await uploadBytes(storageRef, file);
-            const url = await getDownloadURL(snapshot.ref);
-            setImageUrl(url);
-            setUploading(false);
-        } catch (err) {
-            setError('Failed to upload image');
-            setUploading(false);
-        }
-    };
-
-    // -----------------------------
-    // Unlimited Questions Logic
+    // Question handlers
     // -----------------------------
     const handleAddQuestion = () => {
-        // Default question is a single-line
-        setQuestions((prev) => [
-            ...prev,
-            { question_text: '', question_type: 'string' },
-        ]);
+        setQuestions((prev) => [...prev, { question_text: "", question_type: "string" }]);
     };
 
     const handleRemoveQuestion = (index) => {
@@ -156,31 +177,53 @@ function TemplateForm() {
     };
 
     const handleQuestionChange = (index, field, value) => {
-        setQuestions((prev) =>
-            prev.map((q, i) => (i === index ? { ...q, [field]: value } : q))
-        );
+        setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, [field]: value } : q)));
     };
 
     // -----------------------------
-    // Submit (create or update)
+    // Image Upload (Firebase)
+    // -----------------------------
+    const handleImageUpload = async (e) => {
+        const file = e.target?.files?.[0];
+        if (!file) {
+            setError("No file selected");
+            return;
+        }
+
+        setError(null);
+        setSuccess(null);
+
+        const storageRef = ref(storage, `template-images/${Date.now()}-${file.name}`);
+
+        try {
+            setUploading(true);
+            const snapshot = await uploadBytes(storageRef, file);
+            const url = await getDownloadURL(snapshot.ref);
+            setImageUrl(url);
+        } catch (err) {
+            setError("Failed to upload image");
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    // -----------------------------
+    // Submit
     // -----------------------------
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
         setSuccess(null);
 
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem("token");
         if (!token) {
-            setError('You must be logged in to create or edit a template');
+            setError("You must be logged in to create or edit a template");
             return;
         }
 
-        const url = isEditMode
-            ? `${API_URL}/api/templates/${templateId}`
-            : `${API_URL}/api/templates`;
-        const method = isEditMode ? 'PUT' : 'POST';
+        const url = isEditMode ? `${API_URL}/api/templates/${templateId}` : `${API_URL}/api/templates`;
+        const method = isEditMode ? "PUT" : "POST";
 
-        // Build request body for unlimited questions
         const requestBody = {
             title,
             description,
@@ -188,249 +231,413 @@ function TemplateForm() {
             topic_id: topic,
             image_url: imageUrl,
             tags,
-            questions, // your dynamic array
+            questions,
         };
 
         try {
+            setSaving(true);
+
             const resp = await fetch(url, {
                 method,
                 headers: {
-                    'Content-Type': 'application/json',
+                    "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify(requestBody),
             });
 
             if (!resp.ok) {
-                const msg = await resp.json();
-                throw new Error(
-                    msg.error || `Failed to ${isEditMode ? 'update' : 'create'} template`
-                );
+                const msg = await resp.json().catch(() => ({}));
+                throw new Error(msg.error || `Failed to ${isEditMode ? "update" : "create"} template`);
             }
 
-            setSuccess(`Template ${isEditMode ? 'updated' : 'created'} successfully!`);
-            navigate('/templates');
+            setSuccess(`Template ${isEditMode ? "updated" : "created"} successfully!`);
+            navigate("/templates");
         } catch (err) {
-            setError(err.message);
+            setError(err.message || "Save failed");
+        } finally {
+            setSaving(false);
         }
     };
 
-    // -----------------------------
-    // Render
-    // -----------------------------
     return (
-        <div className="bg-dark text-light min-vh-100 py-4">
-            <Container style={{ maxWidth: '800px' }}>
-                <Card className="bg-secondary text-light mb-4">
-                    <Card.Body>
-                        <h1 className="mb-4">
-                            {isEditMode ? 'Edit Template' : 'Create Template'}
-                        </h1>
+        <div className="mx-auto w-full max-w-5xl px-4 py-8">
+            {/* Top bar */}
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                    <Button asChild variant="outline" size="sm" className="gap-2">
+                        <Link to="/templates">
+                            <ArrowLeft className="h-4 w-4" />
+                            Back
+                        </Link>
+                    </Button>
 
-                        {error && <Alert variant="danger">{error}</Alert>}
-                        {success && <Alert variant="success">{success}</Alert>}
+                    <div>
+                        <h1 className="text-2xl font-semibold tracking-tight">{pageTitle}</h1>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                            Build a template people can actually use. No weird vibes. ✅
+                        </p>
+                    </div>
+                </div>
 
-                        <Form onSubmit={handleSubmit}>
-                            {/* Title */}
-                            <Form.Group className="mb-3" controlId="formTitle">
-                                <Form.Label>Title</Form.Label>
-                                <Form.Control
-                                    type="text"
-                                    placeholder="Enter a title"
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    required
-                                />
-                            </Form.Group>
+                <div className="flex items-center gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleAddQuestion}
+                        className="gap-2"
+                        disabled={saving || loadingTemplate}
+                    >
+                        <Plus className="h-4 w-4" />
+                        Add Question
+                    </Button>
 
-                            {/* Description */}
-                            <Form.Group className="mb-3" controlId="formDescription">
-                                <Form.Label>Description</Form.Label>
-                                <Form.Control
-                                    as="textarea"
-                                    rows={3}
-                                    placeholder="Enter a description"
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                />
-                            </Form.Group>
+                    <Button onClick={handleSubmit} disabled={saving || loadingTemplate || uploading}>
+                        {saving ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Saving...
+                            </>
+                        ) : isEditMode ? (
+                            "Save Changes"
+                        ) : (
+                            "Create Template"
+                        )}
+                    </Button>
+                </div>
+            </div>
 
-                            {/* Access & Topic */}
-                            <Row className="mb-3">
-                                <Form.Group as={Col} controlId="formAccessType">
-                                    <Form.Label>Access Type</Form.Label>
-                                    <Form.Select
-                                        value={accessType}
-                                        onChange={(e) => setAccessType(e.target.value)}
-                                    >
-                                        <option value="public">Public</option>
-                                        <option value="private">Private</option>
-                                    </Form.Select>
-                                </Form.Group>
+            {/* Alerts */}
+            {error && (
+                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200">
+                    {error}
+                </div>
+            )}
+            {success && (
+                <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200">
+                    {success}
+                </div>
+            )}
 
-                                <Form.Group as={Col} controlId="formTopic">
-                                    <Form.Label>Topic</Form.Label>
-                                    <Form.Select
-                                        value={topic}
-                                        onChange={(e) => setTopic(e.target.value)}
-                                    >
-                                        <option value="Other">Other</option>
-                                        <option value="Quiz">Quiz</option>
-                                        <option value="Feedback">Feedback</option>
-                                        <option value="Education">Education</option>
-                                        <option value="Survey">Survey</option>
-                                        <option value="Job">Job Application</option>
-                                        <option value="Health">Health</option>
-                                        <option value="Research">Research</option>
-                                        <option value="Finance">Finance</option>
-                                        <option value="Entertainment">Entertainment</option>
-                                    </Form.Select>
-                                </Form.Group>
-                            </Row>
-
-                            {/* Image Upload */}
-                            <Form.Group className="mb-3" controlId="formImageUpload">
-                                <Form.Label>Image (Upload to Firebase)</Form.Label>
-                                <Form.Control
-                                    type="file"
-                                    onChange={handleImageUpload}
-                                    disabled={uploading}
-                                />
-                                {uploading && (
-                                    <Form.Text className="text-light">Uploading...</Form.Text>
-                                )}
-                                {imageUrl && (
-                                    <div className="mt-2">
-                                        <img
-                                            src={imageUrl}
-                                            alt="Uploaded"
-                                            style={{ width: '150px', border: '1px solid #999' }}
-                                        />
-                                    </div>
-                                )}
-                            </Form.Group>
-
-                            {/* Tags */}
-                            <Form.Group className="mb-3" controlId="formTags">
-                                <Form.Label>Tags</Form.Label>
-                                <InputGroup>
-                                    <Form.Control
-                                        type="text"
-                                        placeholder="Enter a tag"
-                                        value={tagInput}
-                                        onChange={(e) => setTagInput(e.target.value)}
+            {/* Loading skeleton */}
+            {loadingTemplate ? (
+                <Card className="p-6">
+                    <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading template...
+                    </div>
+                    <div className="mt-6 space-y-3">
+                        {Array.from({ length: 8 }).map((_, i) => (
+                            <div key={i} className="h-10 w-full animate-pulse rounded-md bg-zinc-100 dark:bg-zinc-900" />
+                        ))}
+                    </div>
+                </Card>
+            ) : (
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    {/* LEFT: Main fields */}
+                    <div className="lg:col-span-2">
+                        <Card className="p-6">
+                            <div className="space-y-5">
+                                {/* Title */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                        Title
+                                    </label>
+                                    <Input
+                                        value={title}
+                                        onChange={(e) => setTitle(e.target.value)}
+                                        placeholder="E.g. Customer Feedback Form"
+                                        required
                                     />
-                                    <Button variant="info" onClick={handleAddTag}>
-                                        Add Tag
-                                    </Button>
-                                </InputGroup>
-                                <div className="mt-2">
-                                    {tags.map((tag, index) => (
-                                        <Badge
-                                            bg="dark"
-                                            className="me-2 mb-2"
-                                            key={index}
-                                            style={{ fontSize: '1rem' }}
+                                </div>
+
+                                {/* Description */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                        Description
+                                    </label>
+                                    <Textarea
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        placeholder="What is this template for?"
+                                        className="min-h-[110px]"
+                                    />
+                                </div>
+
+                                {/* Access + Topic */}
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                            {accessType === "public" ? (
+                                                <Globe className="h-4 w-4" />
+                                            ) : (
+                                                <Lock className="h-4 w-4" />
+                                            )}
+                                            Access Type
+                                        </label>
+
+                                        <select
+                                            value={accessType}
+                                            onChange={(e) => setAccessType(e.target.value)}
+                                            className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-800 dark:bg-zinc-950 dark:ring-zinc-700"
                                         >
-                                            {tag}{' '}
-                                            <Button
-                                                variant="outline-light"
-                                                size="sm"
-                                                onClick={() => handleRemoveTag(tag)}
-                                                style={{ border: 'none', marginLeft: '5px' }}
-                                            >
-                                                ×
-                                            </Button>
-                                        </Badge>
+                                            <option value="public">Public</option>
+                                            <option value="private">Private</option>
+                                        </select>
+
+                                        <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                                            Public shows on the home page. Private is only visible to owner/admin.
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                            Topic
+                                        </label>
+
+                                        <select
+                                            value={topic}
+                                            onChange={(e) => setTopic(e.target.value)}
+                                            className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-800 dark:bg-zinc-950 dark:ring-zinc-700"
+                                        >
+                                            {topicOptions.map((opt) => (
+                                                <option key={opt} value={opt}>
+                                                    {opt === "Job" ? "Job Application" : opt}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+
+                        {/* Questions */}
+                        <Card className="mt-6 p-6">
+                            <div className="mb-4 flex items-start justify-between gap-3">
+                                <div>
+                                    <h2 className="text-lg font-semibold tracking-tight">Questions</h2>
+                                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                                        Add as many as you want. Keep them short and unambiguous, like a good API.
+                                    </p>
+                                </div>
+
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleAddQuestion}
+                                    className="gap-2"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    Add
+                                </Button>
+                            </div>
+
+                            {questions.length === 0 ? (
+                                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300">
+                                    No questions yet. Add one to get started.
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {questions.map((q, i) => (
+                                        <div
+                                            key={i}
+                                            className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+                                        >
+                                            <div className="mb-3 flex items-center justify-between gap-3">
+                                                <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                                    Question {i + 1}
+                                                </div>
+
+                                                <Button
+                                                    type="button"
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    onClick={() => handleRemoveQuestion(i)}
+                                                    className="gap-2"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                    Remove
+                                                </Button>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                                <div className="md:col-span-2 space-y-2">
+                                                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                                        Prompt
+                                                    </label>
+                                                    <Input
+                                                        value={q.question_text || ""}
+                                                        onChange={(e) => handleQuestionChange(i, "question_text", e.target.value)}
+                                                        placeholder={`E.g. What is your name?`}
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                                        Type
+                                                    </label>
+                                                    <select
+                                                        value={q.question_type || "string"}
+                                                        onChange={(e) => handleQuestionChange(i, "question_type", e.target.value)}
+                                                        className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-800 dark:bg-zinc-950 dark:ring-zinc-700"
+                                                    >
+                                                        {questionTypeOptions.map((opt) => (
+                                                            <option key={opt.value} value={opt.value}>
+                                                                {opt.label}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
                                     ))}
                                 </div>
-                            </Form.Group>
+                            )}
+                        </Card>
+                    </div>
 
-                            <hr />
-
-                            {/* Unlimited Questions */}
-                            <h3>Questions (Unlimited)</h3>
-                            <p className="text-muted">
-                                Each question has a text prompt and a type.
-                                (Old separate string/multiline/int/checkbox arrays are removed.)
-                            </p>
-                            {questions.map((q, i) => (
-                                <div
-                                    key={i}
-                                    className="p-3 mb-2"
-                                    style={{ backgroundColor: '#495057', borderRadius: '5px' }}
-                                >
-                                    <Form.Group className="mb-2">
-                                        <Form.Label>Question Text</Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            placeholder={`Question ${i + 1} text`}
-                                            value={q.question_text || ''}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                setQuestions((prev) =>
-                                                    prev.map((item, idx) =>
-                                                        idx === i ? { ...item, question_text: val } : item
-                                                    )
-                                                );
-                                            }}
-                                        />
-                                    </Form.Group>
-
-                                    <Form.Group className="mb-2">
-                                        <Form.Label>Question Type</Form.Label>
-                                        <Form.Select
-                                            value={q.question_type || 'string'}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                setQuestions((prev) =>
-                                                    prev.map((item, idx) =>
-                                                        idx === i ? { ...item, question_type: val } : item
-                                                    )
-                                                );
-                                            }}
-                                        >
-                                            <option value="string">String (single line)</option>
-                                            <option value="multiline">Multiline</option>
-                                            <option value="integer">Integer</option>
-                                            <option value="checkbox">Checkbox</option>
-                                        </Form.Select>
-                                    </Form.Group>
-
-                                    <Button
-                                        variant="danger"
-                                        size="sm"
-                                        onClick={() =>
-                                            setQuestions((prev) => prev.filter((_, idx) => idx !== i))
-                                        }
-                                    >
-                                        Remove
-                                    </Button>
+                    {/* RIGHT: Tags + Image + Tips */}
+                    <div className="space-y-6">
+                        {/* Image */}
+                        <Card className="p-6">
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <h3 className="text-sm font-semibold">Cover Image</h3>
+                                    <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                                        Optional. Upload to Firebase.
+                                    </p>
                                 </div>
-                            ))}
+                                <ImageIcon className="h-4 w-4 text-zinc-500" />
+                            </div>
 
-                            <Button
-                                variant="secondary"
-                                className="mb-3"
-                                onClick={() =>
-                                    setQuestions((prev) => [
-                                        ...prev,
-                                        { question_text: '', question_type: 'string' },
-                                    ])
-                                }
-                            >
-                                + Add Question
-                            </Button>
+                            <div className="mt-4 space-y-3">
+                                <input
+                                    type="file"
+                                    onChange={handleImageUpload}
+                                    disabled={uploading || saving}
+                                    className="block w-full cursor-pointer text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-zinc-800 dark:text-zinc-300 dark:file:bg-zinc-100 dark:file:text-zinc-900 dark:hover:file:bg-zinc-200"
+                                />
 
-                            <hr />
+                                {uploading && (
+                                    <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Uploading...
+                                    </div>
+                                )}
 
-                            <Button variant="success" type="submit">
-                                {isEditMode ? 'Save Changes' : 'Create Template'}
-                            </Button>
-                        </Form>
-                    </Card.Body>
-                </Card>
-            </Container>
+                                {imageUrl ? (
+                                    <div className="rounded-lg border border-zinc-200 p-2 dark:border-zinc-800">
+                                        <img
+                                            src={imageUrl}
+                                            alt="Template cover"
+                                            className="h-40 w-full rounded-md object-cover"
+                                        />
+                                        <div className="mt-2 flex justify-end">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setImageUrl("")}
+                                            >
+                                                Remove image
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="rounded-lg border border-dashed border-zinc-200 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
+                                        No image uploaded.
+                                    </div>
+                                )}
+                            </div>
+                        </Card>
+
+                        {/* Tags */}
+                        <Card className="p-6">
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <h3 className="text-sm font-semibold">Tags</h3>
+                                    <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                                        Press Enter to add. Keep them short.
+                                    </p>
+                                </div>
+                                <TagIcon className="h-4 w-4 text-zinc-500" />
+                            </div>
+
+                            <div className="mt-4 flex gap-2">
+                                <Input
+                                    value={tagInput}
+                                    onChange={(e) => setTagInput(e.target.value)}
+                                    placeholder="e.g. survey"
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            handleAddTag();
+                                        }
+                                    }}
+                                />
+                                <Button type="button" variant="outline" onClick={handleAddTag}>
+                                    Add
+                                </Button>
+                            </div>
+
+                            {tags.length > 0 ? (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {tags.map((tag) => (
+                                        <span
+                                            key={tag}
+                                            className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200"
+                                        >
+                      {tag}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveTag(tag)}
+                                                className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50"
+                                                aria-label={`Remove tag ${tag}`}
+                                                title="Remove"
+                                            >
+                        ×
+                      </button>
+                    </span>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+                                    No tags yet.
+                                </div>
+                            )}
+                        </Card>
+
+                        {/* Tips */}
+                        <Card className="p-6">
+                            <div className="flex items-center gap-2 text-sm font-semibold">
+                                <HelpCircle className="h-4 w-4 text-zinc-500" />
+                                Quick tips
+                            </div>
+                            <ul className="mt-3 space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+                                <li>• Use “multiline” for explanations, “string” for short answers.</li>
+                                <li>• Keep checkbox questions as yes/no facts.</li>
+                                <li>• Public templates appear in Latest/Top and tag cloud.</li>
+                            </ul>
+                        </Card>
+                    </div>
+
+                    {/* Mobile sticky save (optional feel) */}
+                    <div className="lg:hidden">
+                        <Button className="mt-2 w-full" disabled={saving || uploading}>
+                            {saving ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : isEditMode ? (
+                                "Save Changes"
+                            ) : (
+                                "Create Template"
+                            )}
+                        </Button>
+                    </div>
+                </form>
+            )}
         </div>
     );
 }

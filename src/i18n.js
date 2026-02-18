@@ -27,6 +27,8 @@ const translations = {
         image: "Image",
         noAccount: "Don't have an account?",
         yesAccount: "Already have an account?",
+        home: "Home",
+        dashboard: "Dashboard"
     },
     uz: {
         appTitle: "Moslashtiriladigan Formalar",
@@ -56,6 +58,8 @@ const translations = {
         image: "Rasm",
         noAccount: "Akkauntingiz yo'qmi?",
         yesAccount: "Akkountingiz bormi?",
+        home: "Bosh sahifa",
+        dashboard: "Dashboard"
     }
 };
 
