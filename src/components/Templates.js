@@ -1,14 +1,17 @@
 // src/components/Templates.js
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Separator } from "./ui/separator";
 import { Skeleton } from "./ui/skeleton";
 
+// import { ArrowRight, Search, Pencil, Trash2, Users, Hash, Clock } from "lucide-react";
+
 import {
     ArrowLeft,
+    ArrowRight,
     Eye,
     Pencil,
     Trash2,
@@ -16,7 +19,12 @@ import {
     Shield,
     Lock,
     Globe,
+    Users,
+    Hash,
+    Clock,
+    Search
 } from "lucide-react";
+import { Input } from "./ui/input";
 
 function Templates() {
     const [templates, setTemplates] = useState([]);
@@ -206,6 +214,69 @@ function Templates() {
       </span>
         );
     };
+
+
+    const [submissionsQuery, setSubmissionsQuery] = useState("");
+
+    const filteredSubmissions = useMemo(() => {
+        const q = submissionsQuery.trim().toLowerCase();
+        if (!q) return forms;
+
+        return forms.filter((f) => {
+            const idStr = String(f.id ?? "");
+            const username = (f.User?.username ?? "").toLowerCase();
+
+            // Also search inside answers text (super useful)
+            const answersText = Array.isArray(f.FormAnswers)
+                ? f.FormAnswers.map((fa) => {
+                    const question = fa.Question?.question_text ?? "";
+                    const val = String(fa.answer_value ?? "");
+                    return `${question} ${val}`.toLowerCase();
+                }).join(" ")
+                : "";
+
+            return (
+                idStr.includes(q) ||
+                username.includes(q) ||
+                answersText.includes(q)
+            );
+        });
+    }, [forms, submissionsQuery]);
+
+    const uniqueSubmitters = useMemo(() => {
+        const s = new Set();
+        forms.forEach((f) => {
+            const u = f.User?.username;
+            if (u) s.add(u);
+        });
+        return s.size;
+    }, [forms]);
+
+    const lastSubmittedDate = useMemo(() => {
+        const dates = forms
+            .map((f) => (f.createdAt ? new Date(f.createdAt) : null))
+            .filter(Boolean);
+        if (dates.length === 0) return null;
+        dates.sort((a, b) => b - a);
+        return dates[0];
+    }, [forms]);
+
+    const lastSubmittedLabel = useMemo(() => {
+        if (!lastSubmittedDate) return "—";
+        return lastSubmittedDate.toLocaleString();
+    }, [lastSubmittedDate]);
+
+    const lastSubmittedTimeAgo = useMemo(() => {
+        if (!lastSubmittedDate) return "";
+        const ms = Date.now() - lastSubmittedDate.getTime();
+        const mins = Math.floor(ms / 60000);
+        if (mins < 1) return "Just now";
+        if (mins < 60) return `${mins} min ago`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return `${hrs} hr ago`;
+        const days = Math.floor(hrs / 24);
+        return `${days} day${days === 1 ? "" : "s"} ago`;
+    }, [lastSubmittedDate]);
 
     // ---------------------------
     // LIST VIEW: /templates
@@ -473,71 +544,162 @@ function Templates() {
 
             {/* Submitted forms */}
             <Card className="p-6">
-                <h2 className="text-lg font-semibold">Submitted forms</h2>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                    View submissions and answers. You can edit or delete submissions if you own the template (or admin).
-                </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <h2 className="text-lg font-semibold">Submitted forms</h2>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                            Review submissions, open details, and manage entries.
+                        </p>
+                    </div>
+
+                    {/* Search */}
+                    <div className="relative w-full sm:w-[340px]">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                        <Input
+                            value={submissionsQuery}
+                            onChange={(e) => setSubmissionsQuery(e.target.value)}
+                            placeholder="Search by user, form ID, or answer text..."
+                            className="pl-9"
+                        />
+                    </div>
+                </div>
 
                 <Separator className="my-4" />
 
-                {forms.length === 0 ? (
+                {/* Stats */}
+                <div className="mb-4 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                        <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+                            <Hash className="h-4 w-4" />
+                            Total submissions
+                        </div>
+                        <div className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+                            {forms.length}
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                        <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+                            <Users className="h-4 w-4" />
+                            Unique submitters
+                        </div>
+                        <div className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+                            {uniqueSubmitters}
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                        <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+                            <Clock className="h-4 w-4" />
+                            Last submitted
+                        </div>
+                        <div className="mt-2 text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                            {lastSubmittedLabel}
+                        </div>
+                        <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                            {lastSubmittedTimeAgo}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Empty */}
+                {filteredSubmissions.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
-                        No forms have been submitted yet.
+                        {forms.length === 0 ? "No forms have been submitted yet." : "No matching submissions."}
                     </div>
                 ) : (
-                    <div className="space-y-4">
-                        {forms.map((form) => (
-                            <div
-                                key={form.id}
-                                className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
-                            >
-                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                    <div className="text-sm text-zinc-700 dark:text-zinc-300">
-                                        <span className="font-medium">Form ID:</span> {form.id}{" "}
-                                        <span className="mx-2 text-zinc-400">|</span>
-                                        <span className="font-medium">Submitted by:</span>{" "}
-                                        {form.User?.username ?? "Unknown"}
-                                    </div>
+                    <Card className="overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+                                <tr>
+                                    <th className="px-4 py-3">Submission</th>
+                                    <th className="px-4 py-3">Submitted by</th>
+                                    <th className="px-4 py-3">Date</th>
+                                    <th className="px-4 py-3 text-right">Actions</th>
+                                </tr>
+                                </thead>
 
-                                    {canManage && (
-                                        <div className="flex gap-2">
-                                            <Button variant="outline" size="sm" onClick={() => handleEditForm(form.id)}>
-                                                <Pencil className="mr-2 h-4 w-4" />
-                                                Edit
-                                            </Button>
-                                            <Button variant="destructive" size="sm" onClick={() => handleDeleteForm(form.id)}>
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                Delete
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
+                                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                                {filteredSubmissions.map((form) => {
+                                    const submittedBy = form.User?.username ?? "Unknown";
+                                    const dateLabel = form.createdAt
+                                        ? new Date(form.createdAt).toLocaleDateString()
+                                        : "—";
 
-                                {/* Answers */}
-                                {form.FormAnswers?.length > 0 && (
-                                    <div className="mt-4">
-                                        <h3 className="text-sm font-semibold">Answers</h3>
-                                        <ul className="mt-2 space-y-1 text-sm text-zinc-700 dark:text-zinc-300">
-                                            {form.FormAnswers.map((fa) => {
-                                                let displayVal = fa.answer_value;
-                                                if (fa.Question?.question_type === "checkbox") {
-                                                    displayVal = fa.answer_value === "true" ? "Yes" : "No";
-                                                }
-                                                return (
-                                                    <li key={fa.id}>
-                            <span className="font-medium">
-                              {fa.Question?.question_text}:
-                            </span>{" "}
-                                                        {displayVal}
-                                                    </li>
-                                                );
-                                            })}
-                                        </ul>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
+                                    return (
+                                        <tr
+                                            key={form.id}
+                                            className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60"
+                                        >
+                                            <td className="px-4 py-3">
+                                                <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                                                    Form ID: {form.id}
+                                                </div>
+                                                <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                                                    {form.FormAnswers?.length ?? 0} answers
+                                                </div>
+                                            </td>
+
+                                            <td className="px-4 py-3 text-zinc-900 dark:text-zinc-100">
+                                                {submittedBy}
+                                            </td>
+
+                                            <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
+                                                {dateLabel}
+                                            </td>
+
+                                            <td className="px-4 py-3">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button asChild variant="outline" size="sm" className="gap-2">
+                                                        <Link to={`/forms/${form.id}`}>
+                                                            View <ArrowRight className="h-4 w-4" />
+                                                        </Link>
+                                                    </Button>
+
+                                                    {canManage && (
+                                                        <>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => handleEditForm(form.id)}
+                                                                className="gap-2"
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                                Edit
+                                                            </Button>
+
+                                                            <Button
+                                                                variant="destructive"
+                                                                size="sm"
+                                                                onClick={() => handleDeleteForm(form.id)}
+                                                                className="gap-2"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                                Delete
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-between border-t border-zinc-200 px-4 py-3 text-xs text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
+                            <span>
+                              Showing <span className="font-medium">{filteredSubmissions.length}</span> of{" "}
+                                <span className="font-medium">{forms.length}</span>
+                            </span>
+                            <span className="hidden sm:inline">
+                                Tip: search by username, form ID, or any answer text.
+                            </span>
+                        </div>
+                    </Card>
                 )}
             </Card>
         </div>
