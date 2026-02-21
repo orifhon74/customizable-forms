@@ -108,36 +108,45 @@ router.get("/latest", async (req, res) => {
 // -----------------------------------
 // GET /api/templates/top
 // Top = most liked (primary), then most submitted (secondary)
-// Fixes "only 2 templates" by:
-// 1) ordering by the literal expressions directly (not the alias)
-// 2) loading Tags separately so the join can't break LIMIT
+// Fix: avoid JOINs when applying LIMIT (belongsToMany Tags can break LIMIT)
 // -----------------------------------
 router.get("/top", async (req, res) => {
     try {
-        const likeCountExpr = sequelize.literal(
-            `(SELECT COUNT(*) FROM Likes WHERE Likes.template_id = Template.id)`
-        );
+        const likeCountExpr = `(SELECT COUNT(*) FROM Likes WHERE Likes.template_id = Template.id)`;
+        const formsCountExpr = `(SELECT COUNT(*) FROM Forms WHERE Forms.template_id = Template.id)`;
 
-        const formsCountExpr = sequelize.literal(
-            `(SELECT COUNT(*) FROM Forms WHERE Forms.template_id = Template.id)`
-        );
-
-        const templates = await Template.findAll({
+        // 1) Get the ranked template IDs (NO includes/joins here)
+        const topRows = await Template.findAll({
             where: { access_type: "public" },
+            attributes: [
+                "id",
+                [sequelize.literal(likeCountExpr), "likeCount"],
+                [sequelize.literal(formsCountExpr), "forms_count"],
+            ],
+            order: [
+                [sequelize.literal(likeCountExpr), "DESC"],
+                [sequelize.literal(formsCountExpr), "DESC"],
+                ["createdAt", "DESC"],
+            ],
             limit: 6,
             subQuery: false,
+            raw: true,
+        });
 
+        const topIds = topRows.map((r) => r.id);
+
+        if (topIds.length === 0) {
+            return res.json([]);
+        }
+
+        // 2) Fetch full templates with includes (Tags/User)
+        const templates = await Template.findAll({
+            where: { id: topIds },
             include: [
-                {
-                    model: Tag,
-                    attributes: ["id", "name"],
-                    through: { attributes: [] },
-                    required: false,
-                    separate: true, // ✅ critical: prevents LIMIT being affected by tag joins
-                },
+                { model: Like, attributes: [] }, // optional, not required for counts now
+                { model: Tag, attributes: ["id", "name"], through: { attributes: [] }, required: false },
                 { model: User, attributes: ["id", "username"], required: false },
             ],
-
             attributes: [
                 "id",
                 "title",
@@ -146,20 +155,20 @@ router.get("/top", async (req, res) => {
                 "user_id",
                 "allow_editing",
                 "createdAt",
-                [likeCountExpr, "likeCount"],
-                [formsCountExpr, "forms_count"],
+                [sequelize.literal(likeCountExpr), "likeCount"],
+                [sequelize.literal(formsCountExpr), "forms_count"],
             ],
-
-            order: [
-                [likeCountExpr, "DESC"],     // ✅ order by expression, not alias
-                [formsCountExpr, "DESC"],
-                ["createdAt", "DESC"],
-            ],
+            // Important: keep results stable & correct when using group with tags
+            group: ["Template.id", "Tags.id", "User.id"],
         });
 
-        res.json(templates);
+        // 3) Reorder results to match topIds ranking
+        const byId = new Map(templates.map((t) => [t.id, t]));
+        const ordered = topIds.map((id) => byId.get(id)).filter(Boolean);
+
+        res.json(ordered);
     } catch (err) {
-        console.error("Error fetching top templates:", err.message);
+        console.error("Error fetching top templates:", err);
         res.status(500).json({ error: "Failed to fetch top templates" });
     }
 });
