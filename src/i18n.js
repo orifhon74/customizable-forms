@@ -1,6 +1,6 @@
 const translations = {
     en: {
-        appTitle: "Customizable Forms",
+        appTitle: "FormForge",
         login: "Sign In",
         register: "Sign Up",
         logout: "Sign Out",
@@ -11,7 +11,7 @@ const translations = {
         forms: "Forms",
         createTemplate: "Create Template",
         editTemplate: "Edit Template",
-        welcome: "Welcome to Customizable Forms!",
+        welcome: "Welcome to FormForge!",
         latestTemplates: "Latest Templates",
         top5Templates: "Top 5 Templates",
         tags: "Tags",
@@ -31,7 +31,7 @@ const translations = {
         dashboard: "Dashboard"
     },
     uz: {
-        appTitle: "Moslashtiriladigan Formalar",
+        appTitle: "FormForge",
         login: "Kirish",
         register: "Ro'yxatdan o'tish",
         logout: "Chiqish",
@@ -42,7 +42,7 @@ const translations = {
         forms: "Formalar",
         createTemplate: "Shablon yaratish",
         editTemplate: "Shablonni tahrirlash",
-        welcome: "Moslashtiriladigan Formalarga xush kelibsiz!",
+        welcome: "FormForge ga xush kelibsiz!",
         latestTemplates: "Eng so'nggi Shablonlar",
         top5Templates: "Eng mashhur 5 ta Shablonlar",
         tags: "Teglar",
