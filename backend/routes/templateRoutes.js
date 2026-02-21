@@ -107,19 +107,37 @@ router.get("/latest", async (req, res) => {
 
 // -----------------------------------
 // GET /api/templates/top
-// "Top" based on LIKE COUNT (primary), then forms submitted (secondary)
-// Avoid join multiplication by using subquery counts.
+// Top = most liked (primary), then most submitted (secondary)
+// Fixes "only 2 templates" by:
+// 1) ordering by the literal expressions directly (not the alias)
+// 2) loading Tags separately so the join can't break LIMIT
 // -----------------------------------
 router.get("/top", async (req, res) => {
     try {
+        const likeCountExpr = sequelize.literal(
+            `(SELECT COUNT(*) FROM Likes WHERE Likes.template_id = Template.id)`
+        );
+
+        const formsCountExpr = sequelize.literal(
+            `(SELECT COUNT(*) FROM Forms WHERE Forms.template_id = Template.id)`
+        );
+
         const templates = await Template.findAll({
             where: { access_type: "public" },
             limit: 6,
             subQuery: false,
+
             include: [
-                { model: Tag, attributes: ["id", "name"], through: { attributes: [] } },
-                { model: User, attributes: ["id", "username"] },
+                {
+                    model: Tag,
+                    attributes: ["id", "name"],
+                    through: { attributes: [] },
+                    required: false,
+                    separate: true, // ✅ critical: prevents LIMIT being affected by tag joins
+                },
+                { model: User, attributes: ["id", "username"], required: false },
             ],
+
             attributes: [
                 "id",
                 "title",
@@ -128,22 +146,13 @@ router.get("/top", async (req, res) => {
                 "user_id",
                 "allow_editing",
                 "createdAt",
-                [
-                    sequelize.literal(
-                        `(SELECT COUNT(*) FROM Likes WHERE Likes.template_id = Template.id)`
-                    ),
-                    "likeCount",
-                ],
-                [
-                    sequelize.literal(
-                        `(SELECT COUNT(*) FROM Forms WHERE Forms.template_id = Template.id)`
-                    ),
-                    "forms_count",
-                ],
+                [likeCountExpr, "likeCount"],
+                [formsCountExpr, "forms_count"],
             ],
+
             order: [
-                [sequelize.literal("likeCount"), "DESC"],
-                [sequelize.literal("forms_count"), "DESC"],
+                [likeCountExpr, "DESC"],     // ✅ order by expression, not alias
+                [formsCountExpr, "DESC"],
                 ["createdAt", "DESC"],
             ],
         });
