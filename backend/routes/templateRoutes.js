@@ -67,69 +67,91 @@ router.get('/search', authenticateOptional, async (req, res) => {
 
 // -----------------------------------
 // GET /api/templates/latest
+// Returns latest PUBLIC templates (limit 6)
+// likeCount is computed via subquery to avoid GROUP BY issues with Tags
 // -----------------------------------
-router.get('/latest', async (req, res) => {
+router.get("/latest", async (req, res) => {
     try {
         const templates = await Template.findAll({
-            where: { access_type: 'public' },
-            order: [['createdAt', 'DESC']],
+            where: { access_type: "public" },
+            order: [["createdAt", "DESC"]],
             limit: 6,
             subQuery: false,
             include: [
-                { model: Like, attributes: [] },
-                { model: Tag, attributes: ['id', 'name'], through: { attributes: [] } },
-                { model: User, attributes: ['id', 'username'] },
+                { model: Tag, attributes: ["id", "name"], through: { attributes: [] } },
+                { model: User, attributes: ["id", "username"] },
             ],
             attributes: [
-                'id',
-                'title',
-                'description',
-                'image_url',
-                'user_id',
-                'allow_editing', // ✅ include
-                [sequelize.fn('COUNT', sequelize.col('Likes.id')), 'likeCount'],
+                "id",
+                "title",
+                "description",
+                "image_url",
+                "user_id",
+                "allow_editing",
+                "createdAt",
+                [
+                    sequelize.literal(
+                        `(SELECT COUNT(*) FROM Likes WHERE Likes.template_id = Template.id)`
+                    ),
+                    "likeCount",
+                ],
             ],
-            group: ['Template.id', 'Tags.id', 'User.id'],
         });
 
         res.json(templates);
     } catch (err) {
-        console.error('Error fetching public templates:', err.message);
-        res.status(500).json({ error: 'Failed to fetch public templates' });
+        console.error("Error fetching latest templates:", err.message);
+        res.status(500).json({ error: "Failed to fetch latest templates" });
     }
 });
 
 // -----------------------------------
 // GET /api/templates/top
+// "Top" based on LIKE COUNT (primary), then forms submitted (secondary)
+// Avoid join multiplication by using subquery counts.
 // -----------------------------------
-router.get('/top', async (req, res) => {
+router.get("/top", async (req, res) => {
     try {
         const templates = await Template.findAll({
-            where: { access_type: 'public' },
+            where: { access_type: "public" },
+            limit: 6,
+            subQuery: false,
             include: [
-                { model: Form, attributes: [] },
-                { model: Like, attributes: [] },
+                { model: Tag, attributes: ["id", "name"], through: { attributes: [] } },
+                { model: User, attributes: ["id", "username"] },
             ],
             attributes: [
-                'id',
-                'title',
-                'description',
-                'image_url',
-                'user_id',
-                'allow_editing', // ✅ include
-                [sequelize.fn('COUNT', sequelize.col('Forms.id')), 'forms_count'],
-                [sequelize.fn('COUNT', sequelize.col('Likes.id')), 'likeCount'],
+                "id",
+                "title",
+                "description",
+                "image_url",
+                "user_id",
+                "allow_editing",
+                "createdAt",
+                [
+                    sequelize.literal(
+                        `(SELECT COUNT(*) FROM Likes WHERE Likes.template_id = Template.id)`
+                    ),
+                    "likeCount",
+                ],
+                [
+                    sequelize.literal(
+                        `(SELECT COUNT(*) FROM Forms WHERE Forms.template_id = Template.id)`
+                    ),
+                    "forms_count",
+                ],
             ],
-            group: ['Template.id'],
-            order: [[sequelize.literal('forms_count'), 'DESC']],
-            limit: 5,
-            subQuery: false,
+            order: [
+                [sequelize.literal("likeCount"), "DESC"],
+                [sequelize.literal("forms_count"), "DESC"],
+                ["createdAt", "DESC"],
+            ],
         });
 
         res.json(templates);
     } catch (err) {
-        console.error('Error fetching top templates:', err.message);
-        res.status(500).json({ error: 'Failed to fetch top templates' });
+        console.error("Error fetching top templates:", err.message);
+        res.status(500).json({ error: "Failed to fetch top templates" });
     }
 });
 

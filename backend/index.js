@@ -33,6 +33,10 @@ const allowedOrigins = [
     "https://customizable-forms-xi.vercel.app",
 ];
 
+app.get("/health", (_, res) => {
+    res.status(200).json({ ok: true });
+});
+
 app.use(
     cors({
         origin: function (origin, callback) {
@@ -75,6 +79,11 @@ app.use("/api/user-search", userSearchRoutes);
 
 // Sync DB and start server
 const PORT = process.env.PORT || 5001;
+
+app.use((req, res, next) => {
+    res.setHeader("Vary", "Origin");
+    next();
+});
 
 const syncOptions =
     process.env.NODE_ENV === "development"
