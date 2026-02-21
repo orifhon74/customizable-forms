@@ -43,7 +43,7 @@ function NavBar({ isAuthenticated, userRole, handleLogout }) {
     const langMenuRef = useRef(null);
     const adminMenuRef = useRef(null);
 
-    const appTitle = useMemo(() => t("appTitle") || "Customizable Forms", [t]);
+    const appTitle = useMemo(() => t("appTitle") || "FormForge", [t]);
 
     // Close menus when route changes (feels “clean”)
     useEffect(() => {
@@ -111,7 +111,7 @@ function NavBar({ isAuthenticated, userRole, handleLogout }) {
                     <Link to="/" className="flex items-center gap-2" onClick={closeAllDropdowns}>
                         {/* A more “logo-ish” mark */}
                         <div className="grid h-8 w-8 place-items-center rounded-md border border-zinc-200 bg-white text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
-                            <span className="text-xs font-bold">CF</span>
+                            <span className="text-xs font-bold">FF</span>
                         </div>
                         <span className="text-sm font-semibold tracking-tight">{appTitle}</span>
                     </Link>
