@@ -5,7 +5,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 
-import { ArrowLeft, Search, Tag, Loader2, Image as ImageIcon } from "lucide-react";
+import TemplateCard from "./TemplateCard";
+import TemplateTagsRow from "./TemplateTagsRow";
+
+import { ArrowLeft, Search, Tag, Loader2 } from "lucide-react";
 
 function SearchResults() {
     const location = useLocation();
@@ -20,6 +23,8 @@ function SearchResults() {
     const [results, setResults] = useState([]);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
+
+    const isAuthenticated = useMemo(() => !!localStorage.getItem("token"), []);
 
     useEffect(() => {
         const fetchSearchResults = async () => {
@@ -46,14 +51,43 @@ function SearchResults() {
                 setResults(Array.isArray(data) ? data : []);
             } catch (err) {
                 console.error(err);
-                setError("Failed to fetch search results.");
+                setError(err?.message || "Failed to fetch search results.");
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchSearchResults();
+        if (API_URL) fetchSearchResults();
     }, [API_URL, searchQuery, searchType]);
+
+    const handleLike = async (templateId) => {
+        if (!isAuthenticated) {
+            setError("You must be logged in to like a template");
+            return;
+        }
+
+        const token = localStorage.getItem("token");
+        try {
+            const response = await fetch(`${API_URL}/api/likes`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ template_id: templateId }),
+            });
+
+            if (!response.ok) throw new Error("Failed to like template");
+
+            setResults((prev) =>
+                prev.map((t) =>
+                    t.id === templateId ? { ...t, likeCount: (t.likeCount || 0) + 1 } : t
+                )
+            );
+        } catch (err) {
+            setError(err?.message || "Failed to like template");
+        }
+    };
 
     const title = searchType === "tag" ? "Tag results" : "Search results";
     const subtitle =
@@ -84,19 +118,21 @@ function SearchResults() {
                 </Button>
             </div>
 
-            {/* States */}
+            {/* Error */}
             {error && (
                 <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200">
                     {error}
                 </div>
             )}
 
+            {/* Loading */}
             {loading && (
                 <Card className="p-6">
                     <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Searching...
                     </div>
+
                     <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {Array.from({ length: 6 }).map((_, i) => (
                             <div key={i} className="h-64 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-900" />
@@ -105,12 +141,14 @@ function SearchResults() {
                 </Card>
             )}
 
+            {/* Empty */}
             {!loading && !error && results.length === 0 && (
                 <Card className="p-10">
                     <div className="mx-auto max-w-lg text-center">
                         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900">
                             <Search className="h-6 w-6 text-zinc-600 dark:text-zinc-300" />
                         </div>
+
                         <h2 className="text-lg font-semibold">No results found</h2>
                         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                             Try a different keyword, or browse public templates.
@@ -128,45 +166,19 @@ function SearchResults() {
 
             {/* Results grid */}
             {!loading && results.length > 0 && (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {results.map((template) => (
-                        <Card key={template.id} className="overflow-hidden">
-                            {/* Image */}
-                            {template.image_url ? (
-                                <div className="h-40 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900">
-                                    <img
-                                        src={template.image_url}
-                                        alt={template.title}
-                                        className="h-full w-full object-cover"
-                                        loading="lazy"
-                                    />
-                                </div>
-                            ) : (
-                                <div className="flex h-40 w-full items-center justify-center bg-zinc-100 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <ImageIcon className="h-4 w-4" />
-                                        No image
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Body */}
-                            <div className="flex min-h-[190px] flex-col p-4">
-                                <h3 className="line-clamp-2 text-base font-semibold leading-snug">
-                                    {template.title}
-                                </h3>
-
-                                <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                                    {template.description || "No description."}
-                                </p>
-
-                                <div className="mt-auto pt-4">
-                                    <Button className="w-full" onClick={() => navigate(`/templates/${template.id}`)}>
-                                        View Details
-                                    </Button>
-                                </div>
-                            </div>
-                        </Card>
+                        <div key={template.id}>
+                            <TemplateCard
+                                template={template}
+                                showAuthor
+                                isAuthenticated={isAuthenticated}
+                                onLike={() => handleLike(template.id)}
+                                viewHref={`/templates/${template.id}`}
+                                fillHref={`/submit-form/${template.id}`}
+                            />
+                            <TemplateTagsRow tags={template.Tags || []} />
+                        </div>
                     ))}
                 </div>
             )}
