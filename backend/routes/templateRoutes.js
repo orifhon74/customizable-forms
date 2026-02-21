@@ -68,15 +68,28 @@ router.get('/search', authenticateOptional, async (req, res) => {
 // -----------------------------------
 // GET /api/templates/latest
 // Returns latest PUBLIC templates (limit 6)
-// likeCount is computed via subquery to avoid GROUP BY issues with Tags
+// FIX: avoid LIMIT + JOIN (Tag belongsToMany) row-multiplication issues
 // -----------------------------------
 router.get("/latest", async (req, res) => {
     try {
-        const templates = await Template.findAll({
+        // 1) Get latest 6 template ids (NO includes)
+        const base = await Template.findAll({
             where: { access_type: "public" },
             order: [["createdAt", "DESC"]],
             limit: 6,
-            subQuery: false,
+            attributes: [
+                "id",
+                "createdAt",
+            ],
+        });
+
+        const ids = base.map((t) => t.id);
+        if (ids.length === 0) return res.json([]);
+
+        // 2) Fetch full templates with joins, preserving the original order
+        // MySQL: ORDER BY FIELD(id, ...)
+        const templates = await Template.findAll({
+            where: { id: ids },
             include: [
                 { model: Tag, attributes: ["id", "name"], through: { attributes: [] } },
                 { model: User, attributes: ["id", "username"] },
@@ -96,6 +109,7 @@ router.get("/latest", async (req, res) => {
                     "likeCount",
                 ],
             ],
+            order: sequelize.literal(`FIELD(Template.id, ${ids.join(",")})`),
         });
 
         res.json(templates);
