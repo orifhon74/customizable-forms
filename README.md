@@ -141,7 +141,7 @@ REACT_APP_API_URL=http://localhost:5001
 ## Screenshots
 
 ### Home Page
-![Home](./screenshots/home.png)
+![Home](./screenshots/home1.png)
 
 ### Template Details
 ![Template Stats](./screenshots/template-details.png)
