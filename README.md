@@ -1,4 +1,4 @@
-FormForge (formerly Customizable Forms)
+📝 FormForge (formerly Customizable Forms)
 
 A full-stack dynamic form builder and submission platform.
 
@@ -7,16 +7,16 @@ Clean UI. Real users. Real features.
 
 ⸻
 
-Live Demo
+🌐 Live Demo
 
 Frontend: https://customizable-forms-xi.vercel.app
 Backend: Railway (Node.js + Express + MySQL)
 
 ⸻
 
-Features
+🚀 Features
 
-Template System
+🧩 Template System
 	•	Create public or private templates
 	•	Add unlimited questions
 	•	Multiple question types:
@@ -26,11 +26,11 @@ Template System
 	•	Checkbox
 	•	Image support
 	•	Tag system
-	•	Allow/disable submission editing per template
+	•	Enable/disable submission editing per template
 
-Submissions
+📥 Submissions
 	•	Users can submit forms
-	•	Template owner can view all submissions
+	•	Template owners can view all submissions
 	•	Submitters can edit their own submissions (if enabled)
 	•	Admin moderation
 	•	Aggregated statistics:
@@ -39,7 +39,7 @@ Submissions
 	•	Most common text answers
 	•	Checkbox true/false counts
 
-Discovery
+🔎 Discovery
 	•	Latest templates
 	•	Top templates (ranked by likes + submissions)
 	•	Search by text
@@ -47,20 +47,20 @@ Discovery
 	•	Tag cloud
 	•	Like system
 
-Roles
+👥 Roles
 	•	User
 	•	Template Owner
 	•	Admin
 
 ⸻
 
-Tech Stack
+🧠 Tech Stack
 
 Frontend
 	•	React
 	•	React Router
 	•	Tailwind CSS
-	•	ShadCN UI components
+	•	ShadCN UI
 	•	Lucide Icons
 
 Backend
@@ -69,18 +69,18 @@ Backend
 	•	Sequelize ORM
 	•	MySQL
 	•	JWT Authentication
-	•	CORS configuration for production + local
+	•	CORS configuration (production + local)
 
-Deployment
+☁ Deployment
 	•	Frontend: Vercel
 	•	Backend: Railway
 	•	Database: MySQL (Railway)
 
 ⸻
 
-Architecture Highlights
+🏗 Architecture Highlights
 	•	Clean REST API structure
-	•	Proper relational modeling:
+	•	Proper normalized relational modeling:
 	•	Users
 	•	Templates
 	•	Questions
@@ -88,13 +88,13 @@ Architecture Highlights
 	•	FormAnswers
 	•	Tags (many-to-many)
 	•	Likes
-	•	Subquery-based ranking to avoid JOIN + LIMIT bugs
+	•	Subquery-based ranking to avoid JOIN + LIMIT aggregation bugs
 	•	Two-step fetch strategy for consistent “latest” and “top” results
 	•	Role-based access control
 
 ⸻
 
-Database Schema (Core Relationships)
+🗄 Database Schema (Core Relationships)
 
 User → hasMany → Template
 Template → hasMany → Question
@@ -105,7 +105,7 @@ Template → hasMany → Like
 
 ⸻
 
-Running Locally
+⚙ Running Locally
 
 Backend
 ```
@@ -138,7 +138,7 @@ REACT_APP_API_URL=http://localhost:5001
 
 ⸻
 
-## Screenshots
+## 📸 Screenshots
 
 ### Home Page
 ![Home](./screenshots/home1.png)
@@ -151,9 +151,9 @@ REACT_APP_API_URL=http://localhost:5001
 
 ⸻
 
-Demo Accounts
+🔐 Demo Accounts
 
-Admin:
+Admin
 	•	Username: admin
 	•	Email: admin@formforge.app
 	•	Password: (demo only)
@@ -162,29 +162,28 @@ You may create your own user accounts for testing.
 
 ⸻
 
-What This Project Demonstrates
-	•	Full-stack development
+🎯 What This Project Demonstrates
+	•	Full-stack system design
 	•	Authentication + authorization
 	•	Complex relational data modeling
-	•	Aggregation queries
+	•	Aggregation queries & ranking logic
 	•	Production deployment workflow
 	•	Real-world debugging (JOIN + LIMIT edge cases)
-	•	UI overhaul & refactoring at scale
+	•	UI refactoring at scale
 
 ⸻
 
-Future Improvements
+🔮 Future Improvements
 	•	Pagination
 	•	OAuth login
 	•	Real-time notifications
 	•	Form analytics dashboard charts
-	•	Better ranking algorithm
+	•	Improved ranking algorithm
 	•	Caching for top/latest endpoints
 
 ⸻
 
-Author
+👤 Author
 
 Orifkhon Kilichev
-Full-stack developer
-Building scalable tools and automation systems.
+Full-stack developer building scalable tools and automation systems.
