@@ -1,70 +1,177 @@
-# Getting Started with Create React App
+FormForge (formerly Customizable Forms)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A full-stack dynamic form builder and submission platform.
 
-## Available Scripts
+Create templates. Collect submissions. Analyze responses.
+Clean UI. Real users. Real features.
 
-In the project directory, you can run:
+⸻
 
-### `npm start`
+Live Demo
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Frontend: https://customizable-forms-xi.vercel.app
+Backend: Railway (Node.js + Express + MySQL)
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+⸻
 
-### `npm test`
+Features
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Template System
+	•	Create public or private templates
+	•	Add unlimited questions
+	•	Multiple question types:
+	•	String
+	•	Multiline text
+	•	Integer
+	•	Checkbox
+	•	Image support
+	•	Tag system
+	•	Allow/disable submission editing per template
 
-### `npm run build`
+Submissions
+	•	Users can submit forms
+	•	Template owner can view all submissions
+	•	Submitters can edit their own submissions (if enabled)
+	•	Admin moderation
+	•	Aggregated statistics:
+	•	Total submissions
+	•	Average numeric answers
+	•	Most common text answers
+	•	Checkbox true/false counts
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Discovery
+	•	Latest templates
+	•	Top templates (ranked by likes + submissions)
+	•	Search by text
+	•	Search by tag
+	•	Tag cloud
+	•	Like system
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Roles
+	•	User
+	•	Template Owner
+	•	Admin
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+⸻
 
-### `npm run eject`
+Tech Stack
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Frontend
+	•	React
+	•	React Router
+	•	Tailwind CSS
+	•	ShadCN UI components
+	•	Lucide Icons
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Backend
+	•	Node.js
+	•	Express
+	•	Sequelize ORM
+	•	MySQL
+	•	JWT Authentication
+	•	CORS configuration for production + local
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Deployment
+	•	Frontend: Vercel
+	•	Backend: Railway
+	•	Database: MySQL (Railway)
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+⸻
 
-## Learn More
+Architecture Highlights
+	•	Clean REST API structure
+	•	Proper relational modeling:
+	•	Users
+	•	Templates
+	•	Questions
+	•	Forms
+	•	FormAnswers
+	•	Tags (many-to-many)
+	•	Likes
+	•	Subquery-based ranking to avoid JOIN + LIMIT bugs
+	•	Two-step fetch strategy for consistent “latest” and “top” results
+	•	Role-based access control
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+⸻
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Database Schema (Core Relationships)
 
-### Code Splitting
+User → hasMany → Template
+Template → hasMany → Question
+Template → hasMany → Form
+Form → hasMany → FormAnswer
+Template ↔ Tag (many-to-many)
+Template → hasMany → Like
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+⸻
 
-### Analyzing the Bundle Size
+Running Locally
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Backend
+```
+cd backend
+npm install
+npm run dev
+```
+Environment variables (example):
+```
+PORT=5001
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=yourpassword
+DB_NAME=formforge
+JWT_SECRET=your_secret
+```
 
-### Making a Progressive Web App
+⸻
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Frontend
+```
+cd frontend
+npm install
+npm start
+```
+Environment variable:
+```
+REACT_APP_API_URL=http://localhost:5001
+```
 
-### Advanced Configuration
+⸻
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+Demo Accounts
 
-### Deployment
+Admin:
+	•	Username: admin
+	•	Email: admin@formforge.app
+	•	Password: (demo only)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+You may create your own user accounts for testing.
 
-### `npm run build` fails to minify
+⸻
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+What This Project Demonstrates
+	•	Full-stack development
+	•	Authentication + authorization
+	•	Complex relational data modeling
+	•	Aggregation queries
+	•	Production deployment workflow
+	•	Real-world debugging (JOIN + LIMIT edge cases)
+	•	UI overhaul & refactoring at scale
+
+⸻
+
+Future Improvements
+	•	Pagination
+	•	OAuth login
+	•	Real-time notifications
+	•	Form analytics dashboard charts
+	•	Better ranking algorithm
+	•	Caching for top/latest endpoints
+
+⸻
+
+Author
+
+Orifkhon Kilichev
+Full-stack developer
+Building scalable tools and automation systems.
